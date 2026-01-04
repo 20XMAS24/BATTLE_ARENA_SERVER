@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battle Arena - Main Menu</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            color: #fff;
+            overflow: hidden;
+        }
+
+        /* Animated background */
+        .bg-animation {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            opacity: 0.1;
+            background: 
+                repeating-linear-gradient(
+                    45deg,
+                    transparent,
+                    transparent 10px,
+                    rgba(255,255,255,.03) 10px,
+                    rgba(255,255,255,.03) 20px
+                );
+            animation: bgScroll 20s linear infinite;
+        }
+
+        @keyframes bgScroll {
+            0% { transform: translateX(0) translateY(0); }
+            100% { transform: translateX(50px) translateY(50px); }
+        }
+
+        .container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            z-index: 1;
+        }
+
+        /* Left Panel - Server Info */
+        .left-panel {
+            width: 400px;
+            background: rgba(20, 20, 20, 0.9);
+            padding: 40px;
+            border-right: 2px solid rgba(255, 215, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+        }
+
+        .server-logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .server-logo h1 {
+            font-size: 48px;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: bold;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .server-logo p {
+            color: #aaa;
+            font-size: 14px;
+            letter-spacing: 2px;
+        }
+
+        .server-stats {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 14px;
+        }
+
+        .stat-value {
+            color: #FFD700;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .pulse {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #00FF00;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Right Panel - Main Menu */
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+        }
+
+        .menu-title {
+            font-size: 36px;
+            margin-bottom: 40px;
+            text-align: center;
+            color: #FFD700;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .game-modes {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .mode-card {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.05));
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mode-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,215,0,0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .mode-card:hover::before {
+            opacity: 1;
+        }
+
+        .mode-card:hover {
+            transform: translateY(-5px);
+            border-color: #FFD700;
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
+        }
+
+        .mode-card.featured {
+            grid-column: span 2;
+            background: linear-gradient(135deg, rgba(255, 0, 0, 0.2), rgba(255, 100, 0, 0.1));
+            border-color: rgba(255, 0, 0, 0.5);
+        }
+
+        .mode-card.featured:hover {
+            border-color: #FF0000;
+            box-shadow: 0 10px 30px rgba(255, 0, 0, 0.4);
+        }
+
+        .mode-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .mode-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+            color: #FFD700;
+        }
+
+        .mode-card.featured .mode-name {
+            color: #FF4444;
+        }
+
+        .mode-description {
+            font-size: 14px;
+            color: #aaa;
+            text-align: center;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .mode-players {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .mode-badge {
+            display: inline-block;
+            background: rgba(255, 215, 0, 0.2);
+            color: #FFD700;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 10px;
+            text-transform: uppercase;
+        }
+
+        .featured-badge {
+            background: rgba(255, 0, 0, 0.3);
+            color: #FF4444;
+        }
+
+        /* Team Selection Buttons */
+        .team-selection {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .team-btn {
+            flex: 1;
+            padding: 20px 40px;
+            border: 2px solid;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .team-btn.team1 {
+            border-color: #4169E1;
+            color: #4169E1;
+        }
+
+        .team-btn.team2 {
+            border-color: #DC143C;
+            color: #DC143C;
+        }
+
+        .team-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px;
+        }
+
+        .team-btn.team1:hover {
+            background: rgba(65, 105, 225, 0.2);
+            box-shadow: 0 5px 20px rgba(65, 105, 225, 0.5);
+        }
+
+        .team-btn.team2:hover {
+            background: rgba(220, 20, 60, 0.2);
+            box-shadow: 0 5px 20px rgba(220, 20, 60, 0.5);
+        }
+
+        /* Footer */
+        .footer {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: #555;
+            font-size: 12px;
+        }
+
+        /* Loading animation */
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(255, 215, 0, 0.3);
+            border-top: 3px solid #FFD700;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+    
+    <div class="container">
+        <!-- Left Panel -->
+        <div class="left-panel">
+            <div class="server-logo">
+                <h1>BATTLE ARENA</h1>
+                <p>TACTICAL WARFARE</p>
+            </div>
+
+            <div class="server-stats">
+                <div class="stat-item">
+                    <span class="stat-label"><span class="pulse"></span>Server Status</span>
+                    <span class="stat-value">ONLINE</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Players Online</span>
+                    <span class="stat-value" id="player-count">0/100</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Current Mode</span>
+                    <span class="stat-value" id="current-mode">Conquest</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Current Map</span>
+                    <span class="stat-value" id="current-map">Industrial Complex</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Match Time</span>
+                    <span class="stat-value" id="match-time">00:00</span>
+                </div>
+            </div>
+
+            <div class="server-stats" style="margin-top: auto;">
+                <h3 style="color: #FFD700; margin-bottom: 15px;">📋 Controls</h3>
+                <div style="font-size: 13px; color: #888; line-height: 1.8;">
+                    <p><strong style="color: #FFD700;">ESC</strong> - Close Menu</p>
+                    <p><strong style="color: #FFD700;">F1</strong> - Help</p>
+                    <p><strong style="color: #FFD700;">F2</strong> - Squad Menu</p>
+                    <p><strong style="color: #FFD700;">M</strong> - Map</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="right-panel">
+            <h2 class="menu-title">Select Game Mode</h2>
+
+            <div class="game-modes">
+                <!-- Conquest Mode -->
+                <div class="mode-card" onclick="selectMode('conquest')">
+                    <div class="mode-icon">🎯</div>
+                    <div class="mode-name">Conquest</div>
+                    <div class="mode-description">
+                        Capture and hold objectives. Control the battlefield to win!
+                    </div>
+                    <div class="mode-badge">Classic</div>
+                    <div class="mode-players">👥 2-100 Players</div>
+                </div>
+
+                <!-- Rush Mode -->
+                <div class="mode-card" onclick="selectMode('rush')">
+                    <div class="mode-icon">⚡</div>
+                    <div class="mode-name">Rush</div>
+                    <div class="mode-description">
+                        Attack or defend objectives in sequence. Push the frontline!
+                    </div>
+                    <div class="mode-badge">Intense</div>
+                    <div class="mode-players">👥 10-64 Players</div>
+                </div>
+
+                <!-- Insurgency Mode - Featured -->
+                <div class="mode-card featured" onclick="selectMode('insurgency')">
+                    <div class="mode-icon">💀</div>
+                    <div class="mode-name">Insurgency</div>
+                    <div class="mode-description">
+                        Asymmetric warfare! Attackers search for weapon caches while defenders protect them. 
+                        Limited respawns. High stakes!
+                    </div>
+                    <div class="mode-badge featured-badge">🔥 Hardcore</div>
+                    <div class="mode-players">👥 16-50 Players</div>
+                </div>
+
+                <!-- Training Mode -->
+                <div class="mode-card" onclick="selectMode('training')">
+                    <div class="mode-icon">🎓</div>
+                    <div class="mode-name">Training</div>
+                    <div class="mode-description">
+                        Practice weapons, vehicles, and tactics. No pressure!
+                    </div>
+                    <div class="mode-badge">Solo</div>
+                    <div class="mode-players">👤 1-10 Players</div>
+                </div>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="loading-spinner"></div>
+                <p style="color: #FFD700; margin-top: 15px;">Loading...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Battle Arena v2.3 | Powered by RAGE:MP
+    </div>
+
+    <script>
+        console.log('[MAIN MENU] Loaded');
+
+        let selectedGameMode = 'conquest';
+
+        function selectMode(mode) {
+            console.log(`[MAIN MENU] Selected mode: ${mode}`);
+            selectedGameMode = mode;
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            
+            // Hide game modes
+            document.querySelector('.game-modes').style.display = 'none';
+            document.querySelector('.menu-title').textContent = 'Select Your Team';
+            
+            // Show team selection
+            setTimeout(() => {
+                showTeamSelection();
+            }, 500);
+        }
+
+        function showTeamSelection() {
+            document.getElementById('loading').style.display = 'none';
+            
+            const rightPanel = document.querySelector('.right-panel');
+            const teamDiv = document.createElement('div');
+            teamDiv.className = 'team-selection';
+            teamDiv.innerHTML = `
+                <button class="team-btn team1" onclick="joinTeam(1)">
+                    <div style="font-size: 24px; margin-bottom: 10px;">🔵</div>
+                    Task Force Phantom
+                    <div style="font-size: 12px; margin-top: 10px; opacity: 0.7;">Attackers</div>
+                </button>
+                <button class="team-btn team2" onclick="joinTeam(2)">
+                    <div style="font-size: 24px; margin-bottom: 10px;">🔴</div>
+                    Soviet Defenders
+                    <div style="font-size: 12px; margin-top: 10px; opacity: 0.7;">Defenders</div>
+                </button>
+            `;
+            
+            rightPanel.appendChild(teamDiv);
+        }
+
+        function joinTeam(teamId) {
+            console.log(`[MAIN MENU] Joining team ${teamId} with mode ${selectedGameMode}`);
+            
+            if (typeof mp !== 'undefined') {
+                mp.trigger('selectTeamAndMode', teamId, selectedGameMode);
+            } else {
+                console.warn('[MAIN MENU] MP not available (browser mode)');
+            }
+        }
+
+        // Update server stats (called from game)
+        function updateServerStats(data) {
+            const stats = JSON.parse(data);
+            
+            if (stats.playerCount !== undefined) {
+                document.getElementById('player-count').textContent = `${stats.playerCount}/${stats.maxPlayers || 100}`;
+            }
+            
+            if (stats.mode) {
+                document.getElementById('current-mode').textContent = stats.mode;
+            }
+            
+            if (stats.map) {
+                document.getElementById('current-map').textContent = stats.map;
+            }
+            
+            if (stats.matchTime) {
+                document.getElementById('match-time').textContent = stats.matchTime;
+            }
+        }
+
+        // ESC to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (typeof mp !== 'undefined') {
+                    mp.trigger('closeMainMenu');
+                }
+            }
+        });
+
+        // Request initial stats
+        if (typeof mp !== 'undefined') {
+            mp.trigger('requestServerStats');
+        }
+    </script>
+</body>
+</html>
