@@ -1,6 +1,6 @@
 // ============================================================================
-// BATTLE ARENA - Main Package Entry Point
-// This file is loaded by RAGE MP server on startup
+// BATTLE ARENA - Enhanced Server with UI Integration
+// Now with visual objects, web UI, and reduced command dependency
 // ============================================================================
 
 const fs = require('fs');
@@ -9,6 +9,7 @@ const path = require('path');
 console.log('');
 console.log('========================================');
 console.log('   BATTLE ARENA SERVER LOADING');
+console.log('   v2.0 - UI Enhanced Edition');
 console.log('========================================');
 
 // Load configuration
@@ -32,6 +33,43 @@ try {
 }
 
 // ============================================================================
+// COMBAT ZONE LOCATIONS
+// ============================================================================
+
+const BATTLE_ZONES = [
+    {
+        name: 'Industrial Complex',
+        center: { x: 2747.3, y: 1531.2, z: 24.5 },
+        radius: 500,
+        objectives: [
+            { name: 'Alpha - Factory', x: 2750.0, y: 1550.0, z: 24.5 },
+            { name: 'Bravo - Warehouse', x: 2800.0, y: 1500.0, z: 24.5 },
+            { name: 'Charlie - Office', x: 2700.0, y: 1580.0, z: 24.5 }
+        ],
+        spawns: {
+            team1: { x: 2650.0, y: 1450.0, z: 24.5 },
+            team2: { x: 2850.0, y: 1650.0, z: 24.5 }
+        }
+    },
+    {
+        name: 'Desert Outpost',
+        center: { x: -1041.0, y: -2746.0, z: 21.0 },
+        radius: 600,
+        objectives: [
+            { name: 'Alpha - Radar Station', x: -1000.0, y: -2700.0, z: 21.0 },
+            { name: 'Bravo - Barracks', x: -1100.0, y: -2800.0, z: 21.0 },
+            { name: 'Charlie - Helipad', x: -1050.0, y: -2750.0, z: 21.0 }
+        ],
+        spawns: {
+            team1: { x: -950.0, y: -2650.0, z: 21.0 },
+            team2: { x: -1150.0, y: -2850.0, z: 21.0 }
+        }
+    }
+];
+
+let currentBattleZone = BATTLE_ZONES[0];
+
+// ============================================================================
 // GAME STATE MANAGEMENT
 // ============================================================================
 
@@ -42,26 +80,28 @@ class GameState {
         this.players = new Map();
         this.objectives = [];
         this.fobs = new Map();
-        this.currentMap = config.maps ? config.maps[0] : 'default';
+        this.currentMap = 'industrial';
         this.matchActive = false;
         this.matchStartTime = 0;
         this.teamScores = { 1: 0, 2: 0 };
-        this.respawnQueues = { 1: [], 2: [] };
+        this.roleSlots = {};
         
         // Initialize teams
         for (let i = 1; i <= 2; i++) {
             this.teams[i] = {
                 id: i,
-                name: config.factions ? config.factions[i - 1].name : `Team ${i}`,
+                name: i === 1 ? 'Task Force Phantom' : 'Soviet Defenders',
                 players: [],
                 score: 0,
                 kills: 0,
                 deaths: 0,
-                squads: []
+                squads: [],
+                wins: 0,
+                losses: 0
             };
         }
         
-        console.log('[GAME STATE] Initialized');
+        console.log('[GAME STATE] Initialized with UI support');
     }
 
     getTeam(teamId) {
@@ -77,8 +117,14 @@ class GameState {
             team: teamId, 
             role: null, 
             squad: null,
+            kills: 0,
+            deaths: 0,
+            assists: 0,
             joinTime: Date.now()
         });
+        
+        // Broadcast team stats update
+        this.broadcastTeamStats();
     }
 
     removePlayer(player) {
@@ -87,62 +133,40 @@ class GameState {
             const team = this.getTeam(playerData.team);
             team.players = team.players.filter(p => p.id !== player.id);
             this.players.delete(player.id);
+            this.broadcastTeamStats();
         }
+    }
+
+    broadcastTeamStats() {
+        const stats = {
+            team1: {
+                playerCount: this.teams[1].players.length,
+                winRate: this.getWinRate(1)
+            },
+            team2: {
+                playerCount: this.teams[2].players.length,
+                winRate: this.getWinRate(2)
+            }
+        };
+        
+        mp.players.forEach(player => {
+            try {
+                player.call('updateTeamStats', [JSON.stringify(stats)]);
+            } catch (e) {}
+        });
+    }
+
+    getWinRate(teamId) {
+        const team = this.teams[teamId];
+        const total = team.wins + team.losses;
+        return total > 0 ? Math.round((team.wins / total) * 100) : 50;
     }
 }
 
 const gameState = new GameState();
 
 // ============================================================================
-// SQUAD SYSTEM
-// ============================================================================
-
-class Squad {
-    constructor(squadNumber, teamId, leaderPlayer) {
-        this.id = `SQUAD_${teamId}_${squadNumber}`;
-        this.squadNumber = squadNumber;
-        this.teamId = teamId;
-        this.leader = leaderPlayer;
-        this.members = [leaderPlayer];
-        this.maxSize = config.battle.players_per_squad;
-        this.rallyPoint = null;
-    }
-
-    addMember(player) {
-        if (this.members.length < this.maxSize) {
-            this.members.push(player);
-            return true;
-        }
-        return false;
-    }
-
-    removeMember(playerId) {
-        this.members = this.members.filter(m => m.id !== playerId);
-        if (this.leader.id === playerId && this.members.length > 0) {
-            this.leader = this.members[0];
-        }
-    }
-
-    setRallyPoint(x, y, z) {
-        this.rallyPoint = { x, y, z, timestamp: Date.now() };
-        this.broadcastToSquad(`Rally point set at: X:${Math.floor(x)}, Y:${Math.floor(y)}, Z:${Math.floor(z)}`);
-    }
-
-    broadcastToSquad(message) {
-        this.members.forEach(member => {
-            try {
-                if (mp.players.exists(member)) {
-                    member.outputChatBox(`[Squad ${this.squadNumber}] ${message}`);
-                }
-            } catch (e) {
-                // Player no longer exists
-            }
-        });
-    }
-}
-
-// ============================================================================
-// OBJECTIVE SYSTEM
+// OBJECTIVE SYSTEM WITH VISUALS
 // ============================================================================
 
 class Objective {
@@ -152,202 +176,37 @@ class Objective {
         this.position = { x, y, z };
         this.capturedBy = null;
         this.captureProgress = 0;
-        this.radius = 100;
+        this.radius = 50;
         this.playersInRadius = { 1: 0, 2: 0 };
+        this.marker = null;
+        this.colshape = null;
+        
+        // Create colshape for objective detection
+        this.colshape = mp.colshapes.newSphere(x, y, z, this.radius);
+        
+        console.log(`[OBJECTIVE] Created: ${name} at (${Math.floor(x)}, ${Math.floor(y)}, ${Math.floor(z)})`);
     }
 
     updateCapture(teamId) {
         if (this.capturedBy === teamId) return false;
 
         const playersNearby = this.playersInRadius[teamId] || 0;
-        if (playersNearby > 0) {
-            this.captureProgress += playersNearby;
-            if (this.captureProgress >= 45 * playersNearby) {
+        const enemyPlayers = this.playersInRadius[teamId === 1 ? 2 : 1] || 0;
+        
+        if (playersNearby > enemyPlayers) {
+            this.captureProgress += (playersNearby - enemyPlayers) * 2;
+            if (this.captureProgress >= 100) {
                 this.capturedBy = teamId;
-                this.captureProgress = 0;
+                this.captureProgress = 100;
                 return true;
             }
+        } else if (this.captureProgress > 0 && enemyPlayers > 0) {
+            this.captureProgress -= enemyPlayers;
+            if (this.captureProgress < 0) this.captureProgress = 0;
         }
         return false;
     }
 }
-
-// ============================================================================
-// PLAYER COMMANDS
-// ============================================================================
-
-mp.events.addCommand('help', (player) => {
-    player.outputChatBox('!{00FF00}=== BATTLE ARENA COMMANDS ===');
-    player.outputChatBox('!{FFFF00}/team <1|2> - Join a team');
-    player.outputChatBox('!{FFFF00}/role <name> - Select role');
-    player.outputChatBox('!{FFFF00}/squad info - Squad information');
-    player.outputChatBox('!{FFFF00}/objectives - View objectives');
-    player.outputChatBox('!{FFFF00}/stats - Your statistics');
-    player.outputChatBox('!{FFFF00}/status - Match status');
-});
-
-mp.events.addCommand('team', (player, fullText, teamId) => {
-    const id = parseInt(teamId);
-    if (isNaN(id) || id < 1 || id > 2) {
-        player.outputChatBox('!{FF0000}Invalid team. Use: /team 1 or /team 2');
-        return;
-    }
-
-    if (gameState.players.has(player.id)) {
-        gameState.removePlayer(player);
-    }
-
-    gameState.addPlayer(player, id);
-    const team = gameState.getTeam(id);
-    player.outputChatBox(`!{00FF00}Joined: ${team.name}`);
-    player.outputChatBox(`!{FFFF00}Team size: ${team.players.length}/${config.battle.team_size}`);
-    
-    console.log(`[TEAM] ${player.name} joined Team ${id}`);
-});
-
-mp.events.addCommand('role', (player, fullText, roleName) => {
-    if (!roleName) {
-        player.outputChatBox('!{FF0000}Usage: /role <role_name>');
-        player.outputChatBox('!{FFFF00}Available: rifleman, medic, engineer, squad_leader, marksman, mg_gunner, at_gunner');
-        return;
-    }
-
-    const roles = ['rifleman', 'medic', 'engineer', 'squad_leader', 'marksman', 'mg_gunner', 'at_gunner'];
-    if (!roles.includes(roleName.toLowerCase())) {
-        player.outputChatBox('!{FF0000}Invalid role name');
-        return;
-    }
-
-    const playerData = gameState.players.get(player.id);
-    if (!playerData) {
-        player.outputChatBox('!{FF0000}Join a team first! Use /team <1|2>');
-        return;
-    }
-
-    playerData.role = roleName.toLowerCase();
-    player.outputChatBox(`!{00FF00}Role set to: ${roleName}`);
-    
-    console.log(`[ROLE] ${player.name} selected ${roleName}`);
-});
-
-mp.events.addCommand('squad', (player, fullText, action) => {
-    const playerData = gameState.players.get(player.id);
-    
-    if (!playerData || !playerData.team) {
-        player.outputChatBox('!{FF0000}Join a team first!');
-        return;
-    }
-
-    if (action === 'info') {
-        const squad = gameState.squads.get(playerData.squad);
-        if (squad) {
-            player.outputChatBox(`!{00FF00}Squad ${squad.squadNumber}`);
-            player.outputChatBox(`!{FFFF00}Leader: ${squad.leader.name}`);
-            player.outputChatBox(`!{FFFF00}Members: ${squad.members.length}/${squad.maxSize}`);
-        } else {
-            player.outputChatBox('!{FF0000}You are not in a squad');
-        }
-    } else if (action === 'rally') {
-        const squad = gameState.squads.get(playerData.squad);
-        if (squad && squad.leader.id === player.id) {
-            const pos = player.position;
-            squad.setRallyPoint(pos.x, pos.y, pos.z);
-            player.outputChatBox('!{00FF00}Rally point set!');
-        } else {
-            player.outputChatBox('!{FF0000}Only squad leaders can set rally points');
-        }
-    } else {
-        player.outputChatBox('!{FFFF00}Usage: /squad info or /squad rally');
-    }
-});
-
-mp.events.addCommand('objectives', (player) => {
-    if (gameState.objectives.length === 0) {
-        player.outputChatBox('!{FF0000}No objectives active. Admin must start match with /start');
-        return;
-    }
-
-    player.outputChatBox('!{FF0000}=== OBJECTIVES ===');
-    gameState.objectives.forEach(obj => {
-        const owner = obj.capturedBy ? `Team ${obj.capturedBy}` : 'Neutral';
-        player.outputChatBox(`!{FFFF00}${obj.name} - ${owner}`);
-    });
-});
-
-mp.events.addCommand('status', (player) => {
-    const match = gameState.matchActive ? 'ACTIVE' : 'IDLE';
-    const duration = gameState.matchActive ? 
-        Math.floor((Date.now() - gameState.matchStartTime) / 1000) : 0;
-    
-    player.outputChatBox(`!{00FF00}Match Status: ${match}`);
-    if (gameState.matchActive) {
-        player.outputChatBox(`!{FFFF00}Duration: ${duration}s`);
-        player.outputChatBox(`!{FFFF00}Team 1: ${gameState.teamScores[1]} | Team 2: ${gameState.teamScores[2]}`);
-    }
-});
-
-mp.events.addCommand('stats', (player) => {
-    const playerData = gameState.players.get(player.id);
-    if (!playerData) {
-        player.outputChatBox('!{FF0000}No stats available');
-        return;
-    }
-
-    player.outputChatBox('!{00FF00}=== YOUR STATS ===');
-    player.outputChatBox(`!{FFFF00}Team: ${playerData.team || 'None'}`);
-    player.outputChatBox(`!{FFFF00}Role: ${playerData.role || 'None'}`);
-    const playtime = Math.floor((Date.now() - playerData.joinTime) / 1000);
-    player.outputChatBox(`!{FFFF00}Session time: ${playtime}s`);
-});
-
-// ============================================================================
-// ADMIN COMMANDS
-// ============================================================================
-
-mp.events.addCommand('start', (player) => {
-    if (!player.admin) {
-        player.outputChatBox('!{FF0000}Admin only command');
-        return;
-    }
-
-    gameState.matchActive = true;
-    gameState.matchStartTime = Date.now();
-    gameState.teamScores = { 1: 0, 2: 0 };
-
-    // Create objectives
-    gameState.objectives = [
-        new Objective('OBJ_A', 'Alpha Objective', 100, 200, 0),
-        new Objective('OBJ_B', 'Bravo Objective', 300, 400, 0),
-        new Objective('OBJ_C', 'Charlie Objective', 500, 600, 0)
-    ];
-
-    mp.players.forEach((p) => {
-        p.outputChatBox('!{00FF00}[BATTLE ARENA] Match Started!');
-        p.outputChatBox('!{FFFF00}Proceed to objectives. Use /objectives to see them.');
-    });
-
-    console.log('[MATCH] Match started by', player.name);
-});
-
-mp.events.addCommand('end', (player) => {
-    if (!player.admin) {
-        player.outputChatBox('!{FF0000}Admin only command');
-        return;
-    }
-
-    gameState.matchActive = false;
-    const duration = Math.floor((Date.now() - gameState.matchStartTime) / 1000);
-    const winner = gameState.teamScores[1] > gameState.teamScores[2] ? 1 : 2;
-    const team = gameState.getTeam(winner);
-
-    mp.players.forEach((p) => {
-        p.outputChatBox(`!{FF0000}[BATTLE ARENA] Match ended!`);
-        p.outputChatBox(`!{00FF00}Winner: ${team.name}`);
-        p.outputChatBox(`!{FFFF00}Duration: ${duration}s | Team 1: ${gameState.teamScores[1]} | Team 2: ${gameState.teamScores[2]}`);
-    });
-
-    console.log('[MATCH] Match ended. Winner:', team.name);
-});
 
 // ============================================================================
 // PLAYER EVENTS
@@ -356,17 +215,18 @@ mp.events.addCommand('end', (player) => {
 mp.events.add('playerJoin', (player) => {
     console.log(`[JOIN] ${player.name} (${player.ip})`);
     
-    player.outputChatBox('!{00FF00}═══════════════════════════════════');
-    player.outputChatBox('!{FFFF00}    Welcome to BATTLE ARENA!');
-    player.outputChatBox('!{00FF00}═══════════════════════════════════');
-    player.outputChatBox('!{FFFF00}Type /help for commands');
-    player.outputChatBox('!{FFFF00}Use /team <1|2> to join a team');
-    player.outputChatBox('!{00FF00}═══════════════════════════════════');
-    
-    // Spawn player at default location
-    player.position = new mp.Vector3(-1041.0, -2746.0, 21.0);
+    // Spawn at spectator location
+    player.position = new mp.Vector3(currentBattleZone.center.x, currentBattleZone.center.y, currentBattleZone.center.z + 50);
     player.heading = 0;
     player.dimension = 0;
+    player.health = 100;
+    player.armour = 0;
+    
+    // Initialize player UI
+    setTimeout(() => {
+        player.call('playerReady');
+        player.call('showTeamSelect');
+    }, 1000);
 });
 
 mp.events.add('playerQuit', (player, exitType, reason) => {
@@ -376,29 +236,237 @@ mp.events.add('playerQuit', (player, exitType, reason) => {
 
 mp.events.add('playerDeath', (player, reason, killer) => {
     const playerData = gameState.players.get(player.id);
-    if (playerData && playerData.team) {
+    if (playerData) {
+        playerData.deaths++;
         const team = gameState.getTeam(playerData.team);
         team.deaths++;
         
-        player.outputChatBox(`!{FFFF00}You will respawn in ${config.battle.respawn_time} seconds`);
+        player.call('showNotification', ['You will respawn soon', 'info']);
         
+        // Respawn after delay
         setTimeout(() => {
-            if (mp.players.exists(player) && gameState.matchActive) {
-                player.spawn(new mp.Vector3(-1041.0, -2746.0, 21.0));
+            if (mp.players.exists(player)) {
+                const spawnPos = currentBattleZone.spawns[`team${playerData.team}`];
+                player.spawn(new mp.Vector3(spawnPos.x, spawnPos.y, spawnPos.z));
                 player.health = 100;
+                player.armour = playerData.role === 'engineer' ? 50 : 0;
             }
         }, config.battle.respawn_time * 1000);
     }
     
     if (killer && killer.id !== player.id) {
         const killerData = gameState.players.get(killer.id);
-        if (killerData && killerData.team) {
+        if (killerData) {
+            killerData.kills++;
             const killerTeam = gameState.getTeam(killerData.team);
             killerTeam.kills++;
             gameState.teamScores[killerData.team] += 10;
+            
+            killer.call('showNotification', [`+10 Kill: ${player.name}`, 'success']);
+            broadcastHUDUpdate();
         }
     }
 });
+
+// ============================================================================
+// UI EVENTS FROM CLIENT
+// ============================================================================
+
+mp.events.add('selectTeam', (player, teamId) => {
+    gameState.addPlayer(player, teamId);
+    const team = gameState.getTeam(teamId);
+    
+    console.log(`[TEAM] ${player.name} joined Team ${teamId}`);
+    
+    player.call('showRoleSelect');
+    player.call('showNotification', [`Joined: ${team.name}`, 'success']);
+});
+
+mp.events.add('selectRole', (player, roleName) => {
+    const playerData = gameState.players.get(player.id);
+    if (!playerData) return;
+    
+    playerData.role = roleName;
+    player.call('hideAllMenus');
+    player.call('showNotification', [`Role: ${roleName.replace('_', ' ').toUpperCase()}`, 'success']);
+    
+    // Spawn player
+    const spawnPos = currentBattleZone.spawns[`team${playerData.team}`];
+    player.position = new mp.Vector3(
+        spawnPos.x + (Math.random() * 20 - 10),
+        spawnPos.y + (Math.random() * 20 - 10),
+        spawnPos.z
+    );
+    
+    // Give loadout based on role
+    giveRoleLoadout(player, roleName);
+    
+    console.log(`[ROLE] ${player.name} selected ${roleName}`);
+    broadcastHUDUpdate();
+});
+
+mp.events.add('cef:setRallyPoint', (player) => {
+    const playerData = gameState.players.get(player.id);
+    if (!playerData || playerData.role !== 'squad_leader') {
+        player.call('showNotification', ['Only squad leaders can set rally points', 'error']);
+        return;
+    }
+    
+    const pos = player.position;
+    // Broadcast rally point to squad
+    mp.players.forEach(p => {
+        const pData = gameState.players.get(p.id);
+        if (pData && pData.team === playerData.team) {
+            p.call('showRallyPoint', [pos.x, pos.y, pos.z]);
+            p.call('showNotification', ['Rally point set!', 'success']);
+        }
+    });
+});
+
+// ============================================================================
+// LOADOUT SYSTEM
+// ============================================================================
+
+function giveRoleLoadout(player, role) {
+    // Clear existing weapons
+    player.removeAllWeapons();
+    
+    switch(role) {
+        case 'squad_leader':
+            player.giveWeapon(mp.joaat('weapon_carbinerifle'), 200);
+            player.giveWeapon(mp.joaat('weapon_pistol'), 50);
+            player.armour = 50;
+            break;
+        case 'rifleman':
+            player.giveWeapon(mp.joaat('weapon_assaultrifle'), 200);
+            player.giveWeapon(mp.joaat('weapon_knife'), 1);
+            player.armour = 25;
+            break;
+        case 'medic':
+            player.giveWeapon(mp.joaat('weapon_smg'), 150);
+            player.armour = 50;
+            break;
+        case 'engineer':
+            player.giveWeapon(mp.joaat('weapon_assaultsmg'), 150);
+            player.giveWeapon(mp.joaat('weapon_pipebomb'), 3);
+            player.armour = 75;
+            break;
+        case 'marksman':
+            player.giveWeapon(mp.joaat('weapon_marksmanrifle'), 100);
+            player.giveWeapon(mp.joaat('weapon_pistol'), 50);
+            player.armour = 0;
+            break;
+        case 'mg_gunner':
+            player.giveWeapon(mp.joaat('weapon_mg'), 300);
+            player.armour = 25;
+            break;
+        case 'at_gunner':
+            player.giveWeapon(mp.joaat('weapon_rpg'), 5);
+            player.giveWeapon(mp.joaat('weapon_carbinerifle'), 100);
+            player.armour = 25;
+            break;
+    }
+    
+    player.health = 100;
+}
+
+// ============================================================================
+// HUD UPDATE BROADCASTING
+// ============================================================================
+
+function broadcastHUDUpdate() {
+    mp.players.forEach(player => {
+        const playerData = gameState.players.get(player.id);
+        if (!playerData) return;
+        
+        const hudData = {
+            team: playerData.team,
+            role: playerData.role,
+            kills: playerData.kills,
+            deaths: playerData.deaths,
+            assists: playerData.assists,
+            team1Score: gameState.teamScores[1],
+            team2Score: gameState.teamScores[2]
+        };
+        
+        try {
+            player.call('updateGameState', [JSON.stringify(hudData)]);
+        } catch (e) {}
+    });
+}
+
+function broadcastObjectivesUpdate() {
+    const objectivesData = gameState.objectives.map(obj => ({
+        name: obj.name,
+        x: obj.position.x,
+        y: obj.position.y,
+        z: obj.position.z,
+        capturedBy: obj.capturedBy,
+        captureProgress: obj.captureProgress,
+        radius: obj.radius
+    }));
+    
+    mp.players.forEach(player => {
+        try {
+            player.call('updateObjectives', [JSON.stringify(objectivesData)]);
+            player.call('createObjectiveMarkers', [JSON.stringify(objectivesData)]);
+        } catch (e) {}
+    });
+}
+
+// ============================================================================
+// ADMIN COMMANDS (Simplified)
+// ============================================================================
+
+mp.events.addCommand('start', (player) => {
+    if (!player.admin) {
+        player.outputChatBox('!{FF0000}Admin only');
+        return;
+    }
+
+    startMatch();
+});
+
+mp.events.addCommand('end', (player) => {
+    if (!player.admin) return;
+    endMatch();
+});
+
+function startMatch() {
+    gameState.matchActive = true;
+    gameState.matchStartTime = Date.now();
+    gameState.teamScores = { 1: 0, 2: 0 };
+
+    // Create objectives from current battle zone
+    gameState.objectives = currentBattleZone.objectives.map((obj, index) => 
+        new Objective(`OBJ_${index}`, obj.name, obj.x, obj.y, obj.z)
+    );
+
+    mp.players.forEach(player => {
+        player.call('showNotification', ['MATCH STARTED!', 'success']);
+        player.call('startMatchTimer', [gameState.matchStartTime]);
+    });
+
+    broadcastObjectivesUpdate();
+    console.log('[MATCH] Match started');
+}
+
+function endMatch() {
+    gameState.matchActive = false;
+    const winner = gameState.teamScores[1] > gameState.teamScores[2] ? 1 : 2;
+    const team = gameState.getTeam(winner);
+    team.wins++;
+    
+    const loser = winner === 1 ? 2 : 1;
+    gameState.getTeam(loser).losses++;
+
+    mp.players.forEach(player => {
+        player.call('stopMatchTimer');
+        player.call('showNotification', [`WINNER: ${team.name}`, 'success']);
+    });
+
+    console.log('[MATCH] Match ended. Winner:', team.name);
+}
 
 // ============================================================================
 // GAME LOOP
@@ -407,61 +475,64 @@ mp.events.add('playerDeath', (player, reason, killer) => {
 setInterval(() => {
     if (!gameState.matchActive) return;
 
-    // Update objective captures
+    // Reset player counts
     gameState.objectives.forEach(obj => {
         obj.playersInRadius = { 1: 0, 2: 0 };
+    });
+
+    // Count players in objectives
+    mp.players.forEach(player => {
+        const playerData = gameState.players.get(player.id);
+        if (!playerData || !playerData.team) return;
         
-        mp.players.forEach(player => {
-            const playerData = gameState.players.get(player.id);
-            if (!playerData || !playerData.team) return;
+        gameState.objectives.forEach(obj => {
+            const dist = player.position.subtract(
+                new mp.Vector3(obj.position.x, obj.position.y, obj.position.z)
+            ).length();
             
-            const dist = player.position.subtract(new mp.Vector3(obj.position.x, obj.position.y, obj.position.z)).length();
             if (dist < obj.radius) {
                 obj.playersInRadius[playerData.team]++;
             }
         });
+    });
 
-        // Try to capture for both teams
+    // Update captures
+    gameState.objectives.forEach(obj => {
         [1, 2].forEach(teamId => {
             if (obj.updateCapture(teamId)) {
                 const team = gameState.getTeam(teamId);
                 gameState.teamScores[teamId] += 100;
                 
                 mp.players.forEach(p => {
-                    p.outputChatBox(`!{FF0000}[OBJECTIVE] ${obj.name} captured by ${team.name}!`);
+                    p.call('showNotification', [`${obj.name} captured by ${team.name}!`, 'warning']);
                 });
                 
                 console.log(`[OBJECTIVE] ${obj.name} captured by Team ${teamId}`);
+                broadcastHUDUpdate();
             }
         });
     });
 
-    // Check match end (time limit: 1 hour)
-    const matchDuration = Date.now() - gameState.matchStartTime;
-    if (matchDuration >= 3600000) {
-        // Auto end match
-        gameState.matchActive = false;
-        const winner = gameState.teamScores[1] > gameState.teamScores[2] ? 1 : 2;
-        const team = gameState.getTeam(winner);
-        
-        mp.players.forEach(p => {
-            p.outputChatBox(`!{FF0000}[BATTLE ARENA] Match time limit reached!`);
-            p.outputChatBox(`!{00FF00}Winner: ${team.name}`);
-        });
-    }
+    broadcastObjectivesUpdate();
 }, 1000);
+
+// Update HUD regularly
+setInterval(() => {
+    broadcastHUDUpdate();
+}, 5000);
 
 // ============================================================================
 // SERVER READY
 // ============================================================================
 
-console.log('[GAME MODE] Tactical Squad Warfare loaded');
-console.log('[FEATURES] Teams, Squads, Objectives, FOB system');
-console.log('[COMMANDS] Type /help in-game for commands');
+console.log('[UI] Web interface enabled');
+console.log('[VISUAL] Combat objects system loaded');
+console.log('[COMMANDS] Reduced to essentials only');
+console.log('[BATTLE ZONE] Industrial Complex loaded');
 console.log('========================================');
 console.log('   BATTLE ARENA SERVER READY');
+console.log('   Players join via UI - No commands needed!');
 console.log('========================================');
 console.log('');
 
-// Export for other modules
 module.exports = gameState;
