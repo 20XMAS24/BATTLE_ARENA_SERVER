@@ -14,18 +14,18 @@
         </div>
 
         <div class="roles-grid">
-            <!-- Squad Leader -->
-            <div class="role-card squad-leader" onclick="selectRole('squad_leader')">
-                <div class="role-icon">🎯</div>
+            <!-- Squad Leader - HIGHLIGHTED -->
+            <div class="role-card squad-leader featured" onclick="selectRole('squad_leader')">
+                <div class="role-icon">👑</div>
                 <h3>Squad Leader</h3>
                 <p class="role-desc">Command and coordinate</p>
                 <ul class="abilities">
                     <li>✓ Set Rally Points</li>
-                    <li>✓ Request Support</li>
+                    <li>✓ Deploy FOBs</li>
                     <li>✓ Squad Commands</li>
                 </ul>
                 <div class="slots">
-                    <span class="available" id="squad_leader-slots">1/1</span>
+                    <span class="available" id="squad_leader-slots">AVAILABLE</span>
                 </div>
             </div>
 
@@ -40,7 +40,7 @@
                     <li>✓ High Mobility</li>
                 </ul>
                 <div class="slots">
-                    <span class="available" id="rifleman-slots">3/3</span>
+                    <span class="available" id="rifleman-slots">AVAILABLE</span>
                 </div>
             </div>
 
@@ -55,7 +55,7 @@
                     <li>✓ Medical Supplies</li>
                 </ul>
                 <div class="slots">
-                    <span class="available" id="medic-slots">1/1</span>
+                    <span class="available" id="medic-slots">AVAILABLE</span>
                 </div>
             </div>
 
@@ -65,12 +65,12 @@
                 <h3>Engineer</h3>
                 <p class="role-desc">Build and repair</p>
                 <ul class="abilities">
-                    <li>✓ Build FOBs</li>
                     <li>✓ Repair Vehicles</li>
+                    <li>✓ Build Defenses</li>
                     <li>✓ Deploy Assets</li>
                 </ul>
                 <div class="slots">
-                    <span class="available" id="engineer-slots">1/1</span>
+                    <span class="available" id="engineer-slots">AVAILABLE</span>
                 </div>
             </div>
 
@@ -85,7 +85,7 @@
                     <li>✓ High Damage</li>
                 </ul>
                 <div class="slots">
-                    <span class="available" id="marksman-slots">1/1</span>
+                    <span class="available" id="marksman-slots">AVAILABLE</span>
                 </div>
             </div>
 
@@ -100,7 +100,7 @@
                     <li>✓ Area Denial</li>
                 </ul>
                 <div class="slots">
-                    <span class="available" id="mg_gunner-slots">1/1</span>
+                    <span class="available" id="mg_gunner-slots">AVAILABLE</span>
                 </div>
             </div>
 
@@ -115,13 +115,14 @@
                     <li>✓ Heavy Ordnance</li>
                 </ul>
                 <div class="slots">
-                    <span class="available" id="at_gunner-slots">1/1</span>
+                    <span class="available" id="at_gunner-slots">AVAILABLE</span>
                 </div>
             </div>
         </div>
 
         <div class="footer">
-            <p>Press <kbd>ESC</kbd> to auto-assign role</p>
+            <p class="hint">💡 <strong>Squad Leader</strong> can deploy FOBs with <kbd>/placefob</kbd></p>
+            <p>Press <kbd>ESC</kbd> to auto-assign Rifleman</p>
         </div>
     </div>
 
