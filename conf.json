@@ -1,0 +1,49 @@
+{
+  "maxplayers": 100,
+  "name": "⚔️ BATTLE ARENA | Tactical Squad Warfare",
+  "gamemode": "tactical-squad-warfare",
+  "stream-distance": 600.0,
+  "announce": true,
+  "language": "ru",
+  "csharp": "enabled",
+  "voice-chat": true,
+  "api-threading-debugging": false,
+  "port": 22005,
+  "autostart": true,
+  "battle": {
+    "max_teams": 2,
+    "team_size": 50,
+    "players_per_squad": 9,
+    "squad_count_per_team": 6,
+    "friendly_fire": false,
+    "respawn_time": 15,
+    "match_duration": 3600,
+    "objective_capture_time": 45
+  },
+  "roles": {
+    "squad_leader": { "slot_count": 1, "weapon": "ar", "abilities": ["rally_point", "commander_call"] },
+    "rifleman": { "slot_count": 3, "weapon": "ar", "abilities": ["ammo_bag"] },
+    "medic": { "slot_count": 1, "weapon": "ar", "abilities": ["heal", "revive"] },
+    "engineer": { "slot_count": 1, "weapon": "ar", "abilities": ["build_fob", "repair"] },
+    "marksman": { "slot_count": 1, "weapon": "dmr", "abilities": ["scout"] },
+    "mg_gunner": { "slot_count": 1, "weapon": "lmg", "abilities": ["suppression"] },
+    "at_gunner": { "slot_count": 1, "weapon": "ar", "abilities": ["rocket_launcher"] }
+  },
+  "maps": ["everon", "skorpo", "malden", "sahrani"],
+  "factions": [
+    {
+      "name": "Task Force Phantom",
+      "team": 1,
+      "country": "USA",
+      "color": "#0066CC",
+      "uniforms": ["army_digital", "ranger", "delta"]
+    },
+    {
+      "name": "Soviet Defenders",
+      "team": 2,
+      "country": "RUS",
+      "color": "#CC0000",
+      "uniforms": ["flora", "spetsnaz", "mvd"]
+    }
+  ]
+}
