@@ -193,10 +193,11 @@ class Objective {
         this.playersInRadius = { 1: 0, 2: 0 };
         this.marker = null;
         this.colshape = null;
+        this.lastProgressBroadcast = 0;
         
         this.colshape = mp.colshapes.newSphere(x, y, z, this.radius);
         
-        console.log(`[OBJECTIVE] Created: ${name}`);
+        console.log(`[OBJECTIVE] Created: ${name} at (${x}, ${y}, ${z}) radius ${this.radius}m`);
     }
 
     updateCapture(teamId) {
@@ -206,7 +207,19 @@ class Objective {
         const enemyPlayers = this.playersInRadius[teamId === 1 ? 2 : 1] || 0;
         
         if (playersNearby > enemyPlayers) {
+            const oldProgress = this.captureProgress;
             this.captureProgress += (playersNearby - enemyPlayers) * 2;
+            
+            // Broadcast progress every 25%
+            if (Math.floor(oldProgress / 25) !== Math.floor(this.captureProgress / 25)) {
+                mp.players.forEach(p => {
+                    const pData = gameState.players.get(p.id);
+                    if (pData && pData.team === teamId) {
+                        p.outputChatBox(`!{FFFF00}${this.name} - Capturing: ${Math.floor(this.captureProgress)}%`);
+                    }
+                });
+            }
+            
             if (this.captureProgress >= 100) {
                 this.capturedBy = teamId;
                 this.captureProgress = 100;
@@ -342,6 +355,13 @@ mp.events.add('selectRole', (player, roleName) => {
     );
     
     giveRoleLoadout(player, roleName);
+    
+    // Tell player to start match
+    if (!gameState.matchActive) {
+        player.outputChatBox('!{FFAA00}═══════════════════════════════');
+        player.outputChatBox('!{FFAA00}  Type /start to begin match!');
+        player.outputChatBox('!{FFAA00}═══════════════════════════════');
+    }
     
     console.log(`[ROLE] ${player.name} selected ${roleName}`);
     broadcastHUDUpdate();
@@ -488,6 +508,11 @@ mp.events.addCommand('makeadmin', (player, fullText, targetName) => {
 
 // Start match - NO ADMIN REQUIRED FOR TESTING
 mp.events.addCommand('start', (player) => {
+    if (gameState.matchActive) {
+        player.outputChatBox('!{FF0000}Match is already active!');
+        return;
+    }
+    
     player.outputChatBox('!{00FF00}Starting match...');
     startMatch();
 });
@@ -524,6 +549,24 @@ mp.events.addCommand('pos', (player) => {
     console.log(`[POS] ${player.name}: x: ${pos.x}, y: ${pos.y}, z: ${pos.z}`);
 });
 
+// Debug objectives
+mp.events.addCommand('objectives', (player) => {
+    if (!gameState.matchActive) {
+        player.outputChatBox('!{FF0000}Match is not active! Use /start first');
+        return;
+    }
+    
+    player.outputChatBox('!{00FFFF}═══ OBJECTIVES ═══');
+    gameState.objectives.forEach(obj => {
+        const dist = player.position.subtract(new mp.Vector3(obj.position.x, obj.position.y, obj.position.z)).length();
+        player.outputChatBox(`!{FFFF00}${obj.name}:`);
+        player.outputChatBox(`  Distance: ${Math.round(dist)}m (radius: ${obj.radius}m)`);
+        player.outputChatBox(`  Captured by: Team ${obj.capturedBy || 'None'}`);
+        player.outputChatBox(`  Progress: ${Math.round(obj.captureProgress)}%`);
+        player.outputChatBox(`  Players: T1=${obj.playersInRadius[1]} T2=${obj.playersInRadius[2]}`);
+    });
+});
+
 function startMatch() {
     gameState.matchActive = true;
     gameState.matchStartTime = Date.now();
@@ -542,11 +585,14 @@ function startMatch() {
         player.outputChatBox('!{00FF00}═══════════════════════════════');
         player.outputChatBox('!{00FF00}     MATCH STARTED!');
         player.outputChatBox('!{FFFF00}     Vehicles spawned at bases');
+        player.outputChatBox('!{FFFF00}     Go capture objectives!');
+        player.outputChatBox('!{00FFFF}     Use /objectives for info');
         player.outputChatBox('!{00FF00}═══════════════════════════════');
     });
 
     broadcastObjectivesUpdate();
     console.log('[MATCH] Match started with vehicles');
+    console.log(`[MATCH] ${gameState.objectives.length} objectives created`);
 }
 
 function endMatch() {
@@ -573,10 +619,12 @@ function endMatch() {
 setInterval(() => {
     if (!gameState.matchActive) return;
 
+    // Reset player counts
     gameState.objectives.forEach(obj => {
         obj.playersInRadius = { 1: 0, 2: 0 };
     });
 
+    // Count players in objectives
     mp.players.forEach(player => {
         const playerData = gameState.players.get(player.id);
         if (!playerData || !playerData.team) return;
@@ -588,10 +636,16 @@ setInterval(() => {
             
             if (dist < obj.radius) {
                 obj.playersInRadius[playerData.team]++;
+                
+                // Visual feedback
+                if (obj.capturedBy !== playerData.team) {
+                    player.outputChatBox(`!{00FFFF}[Capturing ${obj.name}] ${Math.round(obj.captureProgress)}%`);
+                }
             }
         });
     });
 
+    // Update capture progress
     gameState.objectives.forEach(obj => {
         [1, 2].forEach(teamId => {
             if (obj.updateCapture(teamId)) {
@@ -600,6 +654,7 @@ setInterval(() => {
                 
                 mp.players.forEach(p => {
                     p.call('showNotification', [`${obj.name} captured by ${team.name}!`, 'warning']);
+                    p.outputChatBox(`!{00FF00}[CAPTURED] ${obj.name} by ${team.name}! +100 points`);
                 });
                 
                 console.log(`[OBJECTIVE] ${obj.name} captured by Team ${teamId}`);
@@ -626,6 +681,7 @@ console.log('[UI] Web interface enabled');
 console.log('[VISUAL] Combat objects system loaded');
 console.log('[VEHICLES] 5 vehicle types ready');
 console.log('[COMMANDS] /start - Begin match (auto-grants admin to first player)');
+console.log('[COMMANDS] /objectives - Check objective status');
 console.log('[BATTLE ZONE] Industrial Complex loaded');
 console.log('========================================');
 console.log('   BATTLE ARENA SERVER READY');
