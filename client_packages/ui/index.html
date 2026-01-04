@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battle Arena</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- TEAM SELECTION SCREEN -->
+    <div id="teamSelection" class="screen hidden">
+        <div class="container">
+            <h1 class="title">SELECT YOUR TEAM</h1>
+            
+            <div class="team-grid">
+                <!-- TEAM 1 -->
+                <div class="team-card team1" onclick="selectTeam(1)">
+                    <div class="team-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+                        </svg>
+                    </div>
+                    <h2>TASK FORCE PHANTOM</h2>
+                    <p class="team-desc">Elite tactical unit specializing in covert operations</p>
+                    <div class="team-stats">
+                        <span class="stat"><i class="icon">👥</i> <span id="team1-count">0</span> Players</span>
+                        <span class="stat"><i class="icon">⭐</i> <span id="team1-wins">0</span> Wins</span>
+                    </div>
+                    <button class="btn btn-primary">JOIN TEAM</button>
+                </div>
+                
+                <!-- TEAM 2 -->
+                <div class="team-card team2" onclick="selectTeam(2)">
+                    <div class="team-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+                        </svg>
+                    </div>
+                    <h2>SOVIET DEFENDERS</h2>
+                    <p class="team-desc">Hardened veterans defending strategic positions</p>
+                    <div class="team-stats">
+                        <span class="stat"><i class="icon">👥</i> <span id="team2-count">0</span> Players</span>
+                        <span class="stat"><i class="icon">⭐</i> <span id="team2-wins">0</span> Wins</span>
+                    </div>
+                    <button class="btn btn-danger">JOIN TEAM</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ROLE SELECTION SCREEN -->
+    <div id="roleSelection" class="screen hidden">
+        <div class="container">
+            <h1 class="title">SELECT YOUR ROLE</h1>
+            
+            <div class="role-grid">
+                <div class="role-card" onclick="selectRole('rifleman')">
+                    <div class="role-icon">🎯</div>
+                    <h3>Rifleman</h3>
+                    <p>Frontline fighter with ammo supply</p>
+                    <div class="role-features">
+                        <span class="feature">✓ Assault Rifle</span>
+                        <span class="feature">✓ Ammo Bag</span>
+                        <span class="feature">✓ Grenades</span>
+                    </div>
+                </div>
+                
+                <div class="role-card" onclick="selectRole('medic')">
+                    <div class="role-icon">🏥</div>
+                    <h3>Medic</h3>
+                    <p>Heal and revive teammates</p>
+                    <div class="role-features">
+                        <span class="feature">✓ Medical Kit</span>
+                        <span class="feature">✓ Defibrillator</span>
+                        <span class="feature">✓ Smoke Grenades</span>
+                    </div>
+                </div>
+                
+                <div class="role-card" onclick="selectRole('engineer')">
+                    <div class="role-icon">🔧</div>
+                    <h3>Engineer</h3>
+                    <p>Build FOBs and repair vehicles</p>
+                    <div class="role-features">
+                        <span class="feature">✓ Build Tool</span>
+                        <span class="feature">✓ Repair Kit</span>
+                        <span class="feature">✓ C4 Explosive</span>
+                    </div>
+                </div>
+                
+                <div class="role-card" onclick="selectRole('squad_leader')">
+                    <div class="role-icon">⭐</div>
+                    <h3>Squad Leader</h3>
+                    <p>Command squad and set rally points</p>
+                    <div class="role-features">
+                        <span class="feature">✓ Rally Points</span>
+                        <span class="feature">✓ Squad Commands</span>
+                        <span class="feature">✓ Binoculars</span>
+                    </div>
+                </div>
+                
+                <div class="role-card" onclick="selectRole('marksman')">
+                    <div class="role-icon">🎯</div>
+                    <h3>Marksman</h3>
+                    <p>Long-range precision elimination</p>
+                    <div class="role-features">
+                        <span class="feature">✓ Sniper Rifle</span>
+                        <span class="feature">✓ Scope (8x)</span>
+                        <span class="feature">✓ Ghillie Suit</span>
+                    </div>
+                </div>
+                
+                <div class="role-card" onclick="selectRole('mg_gunner')">
+                    <div class="role-icon">🔥</div>
+                    <h3>Machine Gunner</h3>
+                    <p>Suppress enemies with heavy fire</p>
+                    <div class="role-features">
+                        <span class="feature">✓ Machine Gun</span>
+                        <span class="feature">✓ Bipod</span>
+                        <span class="feature">✓ Large Ammo Box</span>
+                    </div>
+                </div>
+                
+                <div class="role-card" onclick="selectRole('at_gunner')">
+                    <div class="role-icon">💣</div>
+                    <h3>AT Gunner</h3>
+                    <p>Destroy vehicles and armor</p>
+                    <div class="role-features">
+                        <span class="feature">✓ RPG Launcher</span>
+                        <span class="feature">✓ Anti-Tank Mines</span>
+                        <span class="feature">✓ 3x Rockets</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- IN-GAME HUD -->
+    <div id="hud" class="hidden">
+        <!-- Top Bar -->
+        <div class="hud-top">
+            <div class="team-score">
+                <span class="score-label">TEAM 1</span>
+                <span class="score-value" id="team1-score">0</span>
+            </div>
+            
+            <div class="match-info">
+                <div class="timer" id="match-timer">00:00</div>
+                <div class="mode" id="match-mode">CONFLICT</div>
+            </div>
+            
+            <div class="team-score">
+                <span class="score-value" id="team2-score">0</span>
+                <span class="score-label">TEAM 2</span>
+            </div>
+        </div>
+
+        <!-- Player Info (Bottom Left) -->
+        <div class="hud-bottom-left">
+            <div class="player-info">
+                <div class="health-bar">
+                    <div class="health-fill" id="health-fill" style="width: 100%"></div>
+                    <span class="health-text" id="health-text">100</span>
+                </div>
+                <div class="armor-bar">
+                    <div class="armor-fill" id="armor-fill" style="width: 100%"></div>
+                    <span class="armor-text" id="armor-text">100</span>
+                </div>
+            </div>
+            
+            <div class="role-info">
+                <span class="role-icon" id="role-icon">🎯</span>
+                <span class="role-name" id="role-name">Rifleman</span>
+            </div>
+        </div>
+
+        <!-- Objectives (Right Side) -->
+        <div class="hud-right">
+            <h3 class="objectives-title">OBJECTIVES</h3>
+            <div id="objectives-list" class="objectives-list">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+
+        <!-- Squad Info (Bottom) -->
+        <div class="hud-bottom-center">
+            <div class="squad-panel">
+                <h4 class="squad-title">SQUAD <span id="squad-number">1</span></h4>
+                <div id="squad-members" class="squad-members">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div id="notifications" class="notifications"></div>
+
+        <!-- Keybinds Help -->
+        <div class="keybinds">
+            <div class="keybind"><span class="key">F1</span> Menu</div>
+            <div class="keybind"><span class="key">F2</span> Squad</div>
+            <div class="keybind"><span class="key">F3</span> Map</div>
+        </div>
+    </div>
+
+    <!-- Kill Feed -->
+    <div id="killfeed" class="killfeed"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
