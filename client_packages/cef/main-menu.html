@@ -9,6 +9,7 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path fill="%23FFD700" stroke="%23000" stroke-width="1" d="M3,3 L3,25 L10,18 L15,28 L18,27 L13,17 L23,17 Z"/></svg>'), auto;
         }
 
         body {
@@ -22,6 +23,10 @@
             top: 0;
             left: 0;
             z-index: 9999;
+        }
+
+        button, .mode-card {
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path fill="%23FFD700" stroke="%23000" stroke-width="1.5" d="M16,3 L20,14 L32,16 L20,18 L16,29 L12,18 L0,16 L12,14 Z"/></svg>'), pointer !important;
         }
 
         /* Animated background */
@@ -173,7 +178,6 @@
             border: 2px solid rgba(255, 215, 0, 0.3);
             border-radius: 15px;
             padding: 35px 30px;
-            cursor: pointer;
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
@@ -283,7 +287,6 @@
             border: 3px solid;
             border-radius: 12px;
             background: rgba(0, 0, 0, 0.6);
-            cursor: pointer;
             transition: all 0.3s ease;
             font-size: 20px;
             font-weight: bold;
@@ -501,7 +504,7 @@
     </div>
 
     <script>
-        console.log('[MAIN MENU] Loaded');
+        console.log('[MAIN MENU] Loaded with custom cursor');
 
         let selectedGameMode = 'conquest';
 
