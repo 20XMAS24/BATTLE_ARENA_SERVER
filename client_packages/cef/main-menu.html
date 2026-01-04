@@ -14,7 +14,6 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
             color: #fff;
             overflow: hidden;
             width: 100vw;
@@ -29,15 +28,41 @@
             cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path fill="%23FFD700" stroke="%23000" stroke-width="1.5" d="M16,3 L20,14 L32,16 L20,18 L16,29 L12,18 L0,16 L12,14 Z"/></svg>'), pointer !important;
         }
 
-        /* Animated background */
+        /* Video Background */
+        #bg-video {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            transform: translateX(-50%) translateY(-50%);
+            z-index: -2;
+            opacity: 0.5;
+            filter: brightness(0.6) blur(2px);
+        }
+
+        /* Fallback gradient background */
+        .bg-fallback {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: -3;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+        }
+
+        /* Animated overlay */
         .bg-animation {
             position: fixed;
             width: 100%;
             height: 100%;
             top: 0;
             left: 0;
-            z-index: 0;
-            opacity: 0.1;
+            z-index: -1;
+            opacity: 0.15;
             background: 
                 repeating-linear-gradient(
                     45deg,
@@ -60,26 +85,27 @@
             height: 100vh;
             display: flex;
             z-index: 1;
+            background: rgba(0, 0, 0, 0.4);
         }
 
         /* Left Panel - Server Info */
         .left-panel {
-            width: 350px;
-            background: rgba(10, 10, 10, 0.95);
-            padding: 40px 30px;
+            width: 320px;
+            background: rgba(10, 10, 10, 0.9);
+            padding: 35px 25px;
             border-right: 2px solid rgba(255, 215, 0, 0.3);
             display: flex;
             flex-direction: column;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(15px);
         }
 
         .server-logo {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 35px;
         }
 
         .server-logo h1 {
-            font-size: 42px;
+            font-size: 38px;
             background: linear-gradient(135deg, #FFD700, #FFA500);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -91,23 +117,23 @@
 
         .server-logo p {
             color: #888;
-            font-size: 13px;
+            font-size: 12px;
             letter-spacing: 3px;
             text-transform: uppercase;
         }
 
         .server-stats {
             background: rgba(0, 0, 0, 0.6);
-            padding: 20px;
+            padding: 18px;
             border-radius: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
             border: 1px solid rgba(255, 215, 0, 0.1);
         }
 
         .stat-item {
             display: flex;
             justify-content: space-between;
-            padding: 12px 0;
+            padding: 10px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
@@ -117,13 +143,13 @@
 
         .stat-label {
             color: #888;
-            font-size: 13px;
+            font-size: 12px;
         }
 
         .stat-value {
             color: #FFD700;
             font-weight: bold;
-            font-size: 15px;
+            font-size: 14px;
         }
 
         .pulse {
@@ -148,13 +174,12 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 60px;
-            background: rgba(0, 0, 0, 0.3);
+            padding: 50px;
         }
 
         .menu-title {
-            font-size: 48px;
-            margin-bottom: 50px;
+            font-size: 42px;
+            margin-bottom: 40px;
             text-align: center;
             background: linear-gradient(135deg, #FFD700, #FFA500);
             -webkit-background-clip: text;
@@ -168,16 +193,16 @@
         .game-modes {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 25px;
+            gap: 20px;
             width: 100%;
-            max-width: 900px;
+            max-width: 750px;
         }
 
         .mode-card {
             background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(255, 165, 0, 0.04));
             border: 2px solid rgba(255, 215, 0, 0.3);
-            border-radius: 15px;
-            padding: 35px 30px;
+            border-radius: 12px;
+            padding: 25px 20px;
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
@@ -200,9 +225,9 @@
         }
 
         .mode-card:hover {
-            transform: translateY(-8px) scale(1.02);
+            transform: translateY(-5px) scale(1.02);
             border-color: #FFD700;
-            box-shadow: 0 15px 40px rgba(255, 215, 0, 0.4);
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4);
         }
 
         .mode-card.featured {
@@ -213,20 +238,20 @@
 
         .mode-card.featured:hover {
             border-color: #DC143C;
-            box-shadow: 0 15px 40px rgba(220, 20, 60, 0.5);
+            box-shadow: 0 10px 30px rgba(220, 20, 60, 0.5);
         }
 
         .mode-icon {
-            font-size: 56px;
-            margin-bottom: 20px;
+            font-size: 44px;
+            margin-bottom: 15px;
             text-align: center;
-            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5));
+            filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.5));
         }
 
         .mode-name {
-            font-size: 28px;
+            font-size: 22px;
             font-weight: bold;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             text-align: center;
             color: #FFD700;
             text-transform: uppercase;
@@ -238,19 +263,19 @@
         }
 
         .mode-description {
-            font-size: 14px;
+            font-size: 13px;
             color: #bbb;
             text-align: center;
-            line-height: 1.7;
-            margin-bottom: 20px;
+            line-height: 1.6;
+            margin-bottom: 15px;
         }
 
         .mode-players {
             text-align: center;
-            font-size: 12px;
+            font-size: 11px;
             color: #666;
-            margin-top: 15px;
-            padding-top: 15px;
+            margin-top: 12px;
+            padding-top: 12px;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
@@ -258,11 +283,11 @@
             display: inline-block;
             background: rgba(255, 215, 0, 0.2);
             color: #FFD700;
-            padding: 6px 18px;
+            padding: 5px 15px;
             border-radius: 20px;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: bold;
-            margin-top: 10px;
+            margin-top: 8px;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
@@ -275,20 +300,20 @@
         /* Team Selection Buttons */
         .team-selection {
             display: flex;
-            gap: 25px;
-            margin-top: 30px;
+            gap: 20px;
+            margin-top: 25px;
             width: 100%;
-            max-width: 700px;
+            max-width: 650px;
         }
 
         .team-btn {
             flex: 1;
-            padding: 25px 50px;
+            padding: 20px 40px;
             border: 3px solid;
             border-radius: 12px;
             background: rgba(0, 0, 0, 0.6);
             transition: all 0.3s ease;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 2px;
@@ -324,7 +349,7 @@
             bottom: 20px;
             right: 30px;
             color: #555;
-            font-size: 12px;
+            font-size: 11px;
             z-index: 10;
         }
 
@@ -332,15 +357,15 @@
         .loading {
             display: none;
             text-align: center;
-            margin-top: 40px;
+            margin-top: 35px;
         }
 
         .loading-spinner {
             border: 4px solid rgba(255, 215, 0, 0.2);
             border-top: 4px solid #FFD700;
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
+            width: 45px;
+            height: 45px;
             animation: spin 1s linear infinite;
             margin: 0 auto;
         }
@@ -352,22 +377,22 @@
 
         .loading-text {
             color: #FFD700;
-            margin-top: 20px;
-            font-size: 16px;
+            margin-top: 18px;
+            font-size: 15px;
             letter-spacing: 2px;
         }
 
         /* Controls info */
         .controls-info {
             margin-top: auto;
-            padding-top: 20px;
+            padding-top: 18px;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .controls-info h3 {
             color: #FFD700;
-            margin-bottom: 15px;
-            font-size: 16px;
+            margin-bottom: 12px;
+            font-size: 15px;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
@@ -375,8 +400,8 @@
         .control-item {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
-            font-size: 13px;
+            padding: 7px 0;
+            font-size: 12px;
             color: #888;
         }
 
@@ -384,9 +409,36 @@
             color: #FFD700;
             font-weight: bold;
         }
+
+        /* Warning message */
+        .warning-message {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(220, 20, 60, 0.9);
+            color: #fff;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+            z-index: 10000;
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            25% { transform: translateX(-50%) translateY(-10px); }
+            75% { transform: translateX(-50%) translateY(10px); }
+        }
     </style>
 </head>
 <body>
+    <!-- Video Background -->
+    <div class="bg-fallback"></div>
+    <video id="bg-video" autoplay loop muted playsinline>
+        <source src="https://cdn.cloudflare.steamstatic.com/steam/apps/256658589/movie480.webm" type="video/webm">
+    </video>
     <div class="bg-animation"></div>
     
     <div class="container">
@@ -423,10 +475,6 @@
             <div class="controls-info">
                 <h3>📋 Controls</h3>
                 <div class="control-item">
-                    <span class="control-key">ESC</span>
-                    <span>Close Menu</span>
-                </div>
-                <div class="control-item">
                     <span class="control-key">M</span>
                     <span>Map</span>
                 </div>
@@ -451,7 +499,7 @@
                     <div class="mode-icon">🎯</div>
                     <div class="mode-name">Conquest</div>
                     <div class="mode-description">
-                        Capture and hold objectives. Control the battlefield to win!
+                        Capture and hold objectives. Control the battlefield!
                     </div>
                     <div class="mode-badge">Classic</div>
                     <div class="mode-players">👥 2-100 Players</div>
@@ -462,7 +510,7 @@
                     <div class="mode-icon">⚡</div>
                     <div class="mode-name">Rush</div>
                     <div class="mode-description">
-                        Attack or defend objectives in sequence. Push the frontline!
+                        Attack or defend objectives in sequence!
                     </div>
                     <div class="mode-badge">Intense</div>
                     <div class="mode-players">👥 10-64 Players</div>
@@ -473,8 +521,7 @@
                     <div class="mode-icon">💀</div>
                     <div class="mode-name">Insurgency</div>
                     <div class="mode-description">
-                        Asymmetric warfare! Attackers search for weapon caches while defenders protect them. 
-                        Limited respawns. High stakes!
+                        Asymmetric warfare! Find and destroy weapon caches. Limited respawns!
                     </div>
                     <div class="mode-badge featured-badge">🔥 Hardcore</div>
                     <div class="mode-players">👥 16-50 Players</div>
@@ -485,7 +532,7 @@
                     <div class="mode-icon">🎓</div>
                     <div class="mode-name">Training</div>
                     <div class="mode-description">
-                        Practice weapons, vehicles, and tactics. No pressure!
+                        Practice weapons, vehicles, and tactics!
                     </div>
                     <div class="mode-badge">Solo</div>
                     <div class="mode-players">👤 1-10 Players</div>
@@ -503,14 +550,20 @@
         Battle Arena v2.4 | Powered by RAGE:MP
     </div>
 
-    <script>
-        console.log('[MAIN MENU] Loaded with custom cursor');
+    <div class="warning-message" id="warning-message">
+        ⚠️ You must select a game mode first!
+    </div>
 
-        let selectedGameMode = 'conquest';
+    <script>
+        console.log('[MAIN MENU] Loaded with video background');
+
+        let selectedGameMode = null;
+        let modeSelected = false;
 
         function selectMode(mode) {
             console.log(`[MAIN MENU] Selected mode: ${mode}`);
             selectedGameMode = mode;
+            modeSelected = true;
             
             // Show loading
             document.getElementById('loading').style.display = 'block';
@@ -530,14 +583,14 @@
             teamDiv.className = 'team-selection';
             teamDiv.innerHTML = `
                 <button class="team-btn team1" onclick="joinTeam(1)">
-                    <div style="font-size: 32px; margin-bottom: 15px;">🔵</div>
+                    <div style="font-size: 28px; margin-bottom: 12px;">🔵</div>
                     Task Force Phantom
-                    <div style="font-size: 13px; margin-top: 10px; opacity: 0.7; font-weight: normal;">Attackers</div>
+                    <div style="font-size: 12px; margin-top: 8px; opacity: 0.7; font-weight: normal;">Attackers</div>
                 </button>
                 <button class="team-btn team2" onclick="joinTeam(2)">
-                    <div style="font-size: 32px; margin-bottom: 15px;">🔴</div>
+                    <div style="font-size: 28px; margin-bottom: 12px;">🔴</div>
                     Soviet Defenders
-                    <div style="font-size: 13px; margin-top: 10px; opacity: 0.7; font-weight: normal;">Defenders</div>
+                    <div style="font-size: 12px; margin-top: 8px; opacity: 0.7; font-weight: normal;">Defenders</div>
                 </button>
             `;
             
@@ -575,10 +628,18 @@
             }
         }
 
-        // ESC to close
+        // ESC to close - ONLY if mode was selected
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                if (typeof mp !== 'undefined') {
+                if (!modeSelected) {
+                    // Show warning
+                    const warning = document.getElementById('warning-message');
+                    warning.style.display = 'block';
+                    setTimeout(() => {
+                        warning.style.display = 'none';
+                    }, 2000);
+                    console.log('[MAIN MENU] Cannot close - no mode selected');
+                } else if (typeof mp !== 'undefined') {
                     mp.trigger('closeMainMenu');
                 }
             }
