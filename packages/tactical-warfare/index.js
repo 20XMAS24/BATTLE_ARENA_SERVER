@@ -1,16 +1,17 @@
 // ============================================================================
-// BATTLE ARENA - Enhanced Server with UI and Vehicle System
-// v2.1 - Now with full vehicle support!
+// BATTLE ARENA - Enhanced Server with UI, Vehicles and FOB System
+// v2.2 - Now with FOB support!
 // ============================================================================
 
 const fs = require('fs');
 const path = require('path');
 const VehicleManager = require('./modules/vehicles');
+const FOBManager = require('./modules/fob');
 
 console.log('');
 console.log('========================================');
 console.log('   BATTLE ARENA SERVER LOADING');
-console.log('   v2.1 - Vehicle System Edition');
+console.log('   v2.2 - FOB System Edition');
 console.log('========================================');
 
 // Load configuration
@@ -88,7 +89,7 @@ class GameState {
         this.matchStartTime = 0;
         this.teamScores = { 1: 0, 2: 0 };
         this.roleSlots = {};
-        this.admins = new Set(); // Admin list
+        this.admins = new Set();
         
         // Initialize teams
         for (let i = 1; i <= 2; i++) {
@@ -177,6 +178,7 @@ class GameState {
 
 const gameState = new GameState();
 const vehicleManager = new VehicleManager(gameState);
+const fobManager = new FOBManager(gameState);
 
 // ============================================================================
 // OBJECTIVE SYSTEM WITH VISUALS
@@ -210,16 +212,6 @@ class Objective {
             const oldProgress = this.captureProgress;
             this.captureProgress += (playersNearby - enemyPlayers) * 2;
             
-            // Broadcast progress every 25%
-            if (Math.floor(oldProgress / 25) !== Math.floor(this.captureProgress / 25)) {
-                mp.players.forEach(p => {
-                    const pData = gameState.players.get(p.id);
-                    if (pData && pData.team === teamId) {
-                        p.outputChatBox(`!{FFFF00}${this.name} - Capturing: ${Math.floor(this.captureProgress)}%`);
-                    }
-                });
-            }
-            
             if (this.captureProgress >= 100) {
                 this.capturedBy = teamId;
                 this.captureProgress = 100;
@@ -246,7 +238,7 @@ mp.events.add('playerJoin', (player) => {
     player.health = 100;
     player.armour = 0;
     
-    // Auto-grant admin to first player for testing
+    // Auto-grant admin to first player
     if (mp.players.length === 1) {
         gameState.addAdmin(player.name);
         gameState.addAdmin(player.socialClub);
@@ -276,10 +268,28 @@ mp.events.add('playerDeath', (player, reason, killer) => {
         
         setTimeout(() => {
             if (mp.players.exists(player)) {
-                const spawnPos = currentBattleZone.spawns[`team${playerData.team}`];
-                player.spawn(new mp.Vector3(spawnPos.x, spawnPos.y, spawnPos.z));
+                // Try to spawn at nearest friendly FOB
+                const { fob, distance } = fobManager.getNearestFOB(player, playerData.team);
+                
+                let spawnPos;
+                if (fob && distance < 500) {
+                    // Spawn at FOB
+                    spawnPos = new mp.Vector3(
+                        fob.position.x + (Math.random() * 10 - 5),
+                        fob.position.y + (Math.random() * 10 - 5),
+                        fob.position.z
+                    );
+                    player.outputChatBox('!{00FF00}Spawned at FOB');
+                } else {
+                    // Spawn at base
+                    const baseSpawn = currentBattleZone.spawns[`team${playerData.team}`];
+                    spawnPos = new mp.Vector3(baseSpawn.x, baseSpawn.y, baseSpawn.z);
+                }
+                
+                player.spawn(spawnPos);
                 player.health = 100;
                 player.armour = playerData.role === 'engineer' ? 50 : 0;
+                giveRoleLoadout(player, playerData.role);
             }
         }, config.battle.respawn_time * 1000);
     }
@@ -356,7 +366,6 @@ mp.events.add('selectRole', (player, roleName) => {
     
     giveRoleLoadout(player, roleName);
     
-    // Tell player to start match
     if (!gameState.matchActive) {
         player.outputChatBox('!{FFAA00}═══════════════════════════════');
         player.outputChatBox('!{FFAA00}  Type /start to begin match!');
@@ -463,7 +472,8 @@ function broadcastObjectivesUpdate() {
         z: obj.position.z,
         capturedBy: obj.capturedBy,
         captureProgress: obj.captureProgress,
-        radius: obj.radius
+        radius: obj.radius,
+        playersInRadius: obj.playersInRadius
     }));
     
     mp.players.forEach(player => {
@@ -475,10 +485,77 @@ function broadcastObjectivesUpdate() {
 }
 
 // ============================================================================
+// FOB COMMANDS
+// ============================================================================
+
+mp.events.addCommand('placefob', (player) => {
+    if (!gameState.matchActive) {
+        player.outputChatBox('!{FF0000}Match must be active to place FOBs!');
+        return;
+    }
+    
+    fobManager.placeFOB(player);
+});
+
+mp.events.addCommand('fobs', (player) => {
+    const playerData = gameState.players.get(player.id);
+    if (!playerData) return;
+    
+    const teamFobs = fobManager.getFOBsForTeam(playerData.team);
+    
+    player.outputChatBox('!{00FFFF}═══ TEAM FOBs ═══');
+    if (teamFobs.length === 0) {
+        player.outputChatBox('!{FFAA00}No FOBs deployed');
+    } else {
+        teamFobs.forEach(fob => {
+            const dist = player.position.subtract(
+                new mp.Vector3(fob.position.x, fob.position.y, fob.position.z)
+            ).length();
+            const healthPercent = Math.round((fob.health / fob.maxHealth) * 100);
+            player.outputChatBox(`!{00FF00}${fob.id}:`);
+            player.outputChatBox(`  Health: ${healthPercent}% (${fob.health}/${fob.maxHealth})`);
+            player.outputChatBox(`  Distance: ${Math.round(dist)}m`);
+            player.outputChatBox(`  Owner: ${fob.owner.name}`);
+        });
+    }
+    player.outputChatBox(`!{00FFFF}Total: ${teamFobs.length}/${fobManager.maxFobsPerTeam}`);
+});
+
+mp.events.addCommand('resupply', (player) => {
+    const playerData = gameState.players.get(player.id);
+    if (!playerData) return;
+    
+    const { fob, distance } = fobManager.getNearestFOB(player, playerData.team);
+    
+    if (!fob || distance > 30) {
+        player.outputChatBox('!{FF0000}You must be near a friendly FOB!');
+        return;
+    }
+    
+    fob.resupplyPlayer(player);
+    giveRoleLoadout(player, playerData.role);
+    player.outputChatBox('!{00FF00}[FOB] Resupplied!');
+});
+
+mp.events.addCommand('heal', (player) => {
+    const playerData = gameState.players.get(player.id);
+    if (!playerData) return;
+    
+    const { fob, distance } = fobManager.getNearestFOB(player, playerData.team);
+    
+    if (!fob || distance > 30) {
+        player.outputChatBox('!{FF0000}You must be near a friendly FOB!');
+        return;
+    }
+    
+    fob.healPlayer(player);
+    player.outputChatBox('!{00FF00}[FOB] Healed!');
+});
+
+// ============================================================================
 // ADMIN COMMANDS
 // ============================================================================
 
-// Make admin
 mp.events.addCommand('makeadmin', (player, fullText, targetName) => {
     if (!gameState.isAdmin(player)) {
         player.outputChatBox('!{FF0000}You are not an admin!');
@@ -506,7 +583,6 @@ mp.events.addCommand('makeadmin', (player, fullText, targetName) => {
     target.outputChatBox('!{00FF00}You have been granted admin rights!');
 });
 
-// Start match - NO ADMIN REQUIRED FOR TESTING
 mp.events.addCommand('start', (player) => {
     if (gameState.matchActive) {
         player.outputChatBox('!{FF0000}Match is already active!');
@@ -517,7 +593,6 @@ mp.events.addCommand('start', (player) => {
     startMatch();
 });
 
-// End match  
 mp.events.addCommand('end', (player) => {
     if (!gameState.isAdmin(player)) {
         player.outputChatBox('!{FF0000}Admin only');
@@ -526,7 +601,6 @@ mp.events.addCommand('end', (player) => {
     endMatch();
 });
 
-// Teleport to coordinates
 mp.events.addCommand('tp', (player, fullText, x, y, z) => {
     if (!gameState.isAdmin(player)) {
         player.outputChatBox('!{FF0000}Admin only');
@@ -542,14 +616,12 @@ mp.events.addCommand('tp', (player, fullText, x, y, z) => {
     player.outputChatBox(`!{00FF00}Teleported to: ${x}, ${y}, ${z}`);
 });
 
-// Get position
 mp.events.addCommand('pos', (player) => {
     const pos = player.position;
     player.outputChatBox(`!{00FFFF}Position: ${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)}`);
     console.log(`[POS] ${player.name}: x: ${pos.x}, y: ${pos.y}, z: ${pos.z}`);
 });
 
-// Debug objectives
 mp.events.addCommand('objectives', (player) => {
     if (!gameState.matchActive) {
         player.outputChatBox('!{FF0000}Match is not active! Use /start first');
@@ -576,7 +648,6 @@ function startMatch() {
         new Objective(`OBJ_${index}`, obj.name, obj.x, obj.y, obj.z)
     );
 
-    // Spawn vehicles
     vehicleManager.spawnVehiclesForZone(currentBattleZone.id);
 
     mp.players.forEach(player => {
@@ -584,15 +655,15 @@ function startMatch() {
         player.call('startMatchTimer', [gameState.matchStartTime]);
         player.outputChatBox('!{00FF00}═══════════════════════════════');
         player.outputChatBox('!{00FF00}     MATCH STARTED!');
-        player.outputChatBox('!{FFFF00}     Vehicles spawned at bases');
-        player.outputChatBox('!{FFFF00}     Go capture objectives!');
-        player.outputChatBox('!{00FFFF}     Use /objectives for info');
+        player.outputChatBox('!{FFFF00}     Vehicles spawned!');
+        player.outputChatBox('!{FFFF00}     Capture objectives!');
+        player.outputChatBox('!{00FFFF}     /placefob - Deploy FOB (Squad Leaders)');
+        player.outputChatBox('!{00FFFF}     /objectives - Check objectives');
         player.outputChatBox('!{00FF00}═══════════════════════════════');
     });
 
     broadcastObjectivesUpdate();
-    console.log('[MATCH] Match started with vehicles');
-    console.log(`[MATCH] ${gameState.objectives.length} objectives created`);
+    console.log('[MATCH] Match started');
 }
 
 function endMatch() {
@@ -619,12 +690,10 @@ function endMatch() {
 setInterval(() => {
     if (!gameState.matchActive) return;
 
-    // Reset player counts
     gameState.objectives.forEach(obj => {
         obj.playersInRadius = { 1: 0, 2: 0 };
     });
 
-    // Count players in objectives
     mp.players.forEach(player => {
         const playerData = gameState.players.get(player.id);
         if (!playerData || !playerData.team) return;
@@ -636,16 +705,10 @@ setInterval(() => {
             
             if (dist < obj.radius) {
                 obj.playersInRadius[playerData.team]++;
-                
-                // Visual feedback
-                if (obj.capturedBy !== playerData.team) {
-                    player.outputChatBox(`!{00FFFF}[Capturing ${obj.name}] ${Math.round(obj.captureProgress)}%`);
-                }
             }
         });
     });
 
-    // Update capture progress
     gameState.objectives.forEach(obj => {
         [1, 2].forEach(teamId => {
             if (obj.updateCapture(teamId)) {
@@ -664,9 +727,8 @@ setInterval(() => {
     });
 
     broadcastObjectivesUpdate();
-    
-    // Update vehicles
     vehicleManager.update();
+    fobManager.update();
 }, 1000);
 
 setInterval(() => {
@@ -680,12 +742,16 @@ setInterval(() => {
 console.log('[UI] Web interface enabled');
 console.log('[VISUAL] Combat objects system loaded');
 console.log('[VEHICLES] 5 vehicle types ready');
-console.log('[COMMANDS] /start - Begin match (auto-grants admin to first player)');
-console.log('[COMMANDS] /objectives - Check objective status');
+console.log('[FOB] Forward Operating Base system ready');
+console.log('[COMMANDS] /start - Begin match');
+console.log('[COMMANDS] /placefob - Deploy FOB (Squad Leaders)');
+console.log('[COMMANDS] /fobs - List team FOBs');
+console.log('[COMMANDS] /resupply - Resupply at FOB');
+console.log('[COMMANDS] /heal - Heal at FOB');
 console.log('[BATTLE ZONE] Industrial Complex loaded');
 console.log('========================================');
 console.log('   BATTLE ARENA SERVER READY');
-console.log('   🚗 Vehicles, UI, Combat - All systems GO!');
+console.log('   🏗️ Vehicles, UI, FOB - All systems GO!');
 console.log('========================================');
 console.log('');
 
