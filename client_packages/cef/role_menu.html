@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Role Selection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 1400px;
+        }
+
+        .title {
+            font-size: 42px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .subtitle {
+            font-size: 18px;
+            margin-bottom: 40px;
+            opacity: 0.8;
+        }
+
+        .roles {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .role-card {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 12px;
+            padding: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            text-align: left;
+        }
+
+        .role-card:hover {
+            transform: translateY(-5px);
+            border-color: #3498db;
+            box-shadow: 0 15px 30px rgba(52, 152, 219, 0.3);
+        }
+
+        .role-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .role-icon {
+            font-size: 36px;
+        }
+
+        .role-info {
+            flex: 1;
+        }
+
+        .role-name {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .role-type {
+            font-size: 12px;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .role-description {
+            font-size: 14px;
+            opacity: 0.85;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .role-abilities {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .ability {
+            font-size: 13px;
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ability-icon {
+            font-size: 16px;
+        }
+
+        .role-slots {
+            margin-top: 10px;
+            font-size: 12px;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">🎯 SELECT YOUR ROLE</div>
+        <div class="subtitle">Choose a specialization that fits your playstyle</div>
+        
+        <div class="roles">
+            <div class="role-card" onclick="selectRole('rifleman')">
+                <div class="role-header">
+                    <div class="role-icon">🔫</div>
+                    <div class="role-info">
+                        <div class="role-name">Rifleman</div>
+                        <div class="role-type">Infantry</div>
+                    </div>
+                </div>
+                <div class="role-description">
+                    Versatile frontline soldier. Balanced firepower and mobility for all situations.
+                </div>
+                <div class="role-abilities">
+                    <div class="ability">
+                        <span class="ability-icon">📦</span>
+                        <span>Ammo Bag - Resupply team</span>
+                    </div>
+                    <div class="ability">
+                        <span class="ability-icon">⚡</span>
+                        <span>Fast Sprint</span>
+                    </div>
+                </div>
+                <div class="role-slots">3 slots per squad</div>
+            </div>
+
+            <div class="role-card" onclick="selectRole('medic')">
+                <div class="role-header">
+                    <div class="role-icon">🏥</div>
+                    <div class="role-info">
+                        <div class="role-name">Medic</div>
+                        <div class="role-type">Support</div>
+                    </div>
+                </div>
+                <div class="role-description">
+                    Combat medic. Keep your team alive and revive fallen soldiers.
+                </div>
+                <div class="role-abilities">
+                    <div class="ability">
+                        <span class="ability-icon">💊</span>
+                        <span>Heal Teammates</span>
+                    </div>
+                    <div class="ability">
+                        <span class="ability-icon">🔄</span>
+                        <span>Revive Downed Players</span>
+                    </div>
+                </div>
+                <div class="role-slots">1 slot per squad</div>
+            </div>
+
+            <div class="role-card" onclick="selectRole('engineer')">
+                <div class="role-header">
+                    <div class="role-icon">🔧</div>
+                    <div class="role-info">
+                        <div class="role-name">Engineer</div>
+                        <div class="role-type">Construction</div>
+                    </div>
+                </div>
+                <div class="role-description">
+                    Build and repair structures. Construct FOBs and defensive positions.
+                </div>
+                <div class="role-abilities">
+                    <div class="ability">
+                        <span class="ability-icon">🏗️</span>
+                        <span>Build FOBs</span>
+                    </div>
+                    <div class="ability">
+                        <span class="ability-icon">⚙️</span>
+                        <span>Repair Vehicles</span>
+                    </div>
+                </div>
+                <div class="role-slots">1 slot per squad</div>
+            </div>
+
+            <div class="role-card" onclick="selectRole('squad_leader')">
+                <div class="role-header">
+                    <div class="role-icon">⭐</div>
+                    <div class="role-info">
+                        <div class="role-name">Squad Leader</div>
+                        <div class="role-type">Command</div>
+                    </div>
+                </div>
+                <div class="role-description">
+                    Lead your squad. Set rally points and coordinate team tactics.
+                </div>
+                <div class="role-abilities">
+                    <div class="ability">
+                        <span class="ability-icon">📍</span>
+                        <span>Rally Points</span>
+                    </div>
+                    <div class="ability">
+                        <span class="ability-icon">📡</span>
+                        <span>Squad Management</span>
+                    </div>
+                </div>
+                <div class="role-slots">1 slot per squad</div>
+            </div>
+
+            <div class="role-card" onclick="selectRole('marksman')">
+                <div class="role-header">
+                    <div class="role-icon">🎯</div>
+                    <div class="role-info">
+                        <div class="role-name">Marksman</div>
+                        <div class="role-type">Recon</div>
+                    </div>
+                </div>
+                <div class="role-description">
+                    Precision sniper. Take out high-value targets from distance.
+                </div>
+                <div class="role-abilities">
+                    <div class="ability">
+                        <span class="ability-icon">🔭</span>
+                        <span>Scope Zoom</span>
+                    </div>
+                    <div class="ability">
+                        <span class="ability-icon">💀</span>
+                        <span>One Shot Kill</span>
+                    </div>
+                </div>
+                <div class="role-slots">1 slot per squad</div>
+            </div>
+
+            <div class="role-card" onclick="selectRole('mg_gunner')">
+                <div class="role-header">
+                    <div class="role-icon">🔥</div>
+                    <div class="role-info">
+                        <div class="role-name">MG Gunner</div>
+                        <div class="role-type">Heavy</div>
+                    </div>
+                </div>
+                <div class="role-description">
+                    Heavy machine gunner. Suppress enemies and control areas.
+                </div>
+                <div class="role-abilities">
+                    <div class="ability">
+                        <span class="ability-icon">💥</span>
+                        <span>Suppression Fire</span>
+                    </div>
+                    <div class="ability">
+                        <span class="ability-icon">🛡️</span>
+                        <span>Area Denial</span>
+                    </div>
+                </div>
+                <div class="role-slots">1 slot per squad</div>
+            </div>
+
+            <div class="role-card" onclick="selectRole('at_gunner')">
+                <div class="role-header">
+                    <div class="role-icon">💣</div>
+                    <div class="role-info">
+                        <div class="role-name">AT Gunner</div>
+                        <div class="role-type">Anti-Armor</div>
+                    </div>
+                </div>
+                <div class="role-description">
+                    Anti-tank specialist. Destroy enemy vehicles and fortifications.
+                </div>
+                <div class="role-abilities">
+                    <div class="ability">
+                        <span class="ability-icon">🚀</span>
+                        <span>Anti-Tank Rocket</span>
+                    </div>
+                    <div class="ability">
+                        <span class="ability-icon">💥</span>
+                        <span>Structure Damage</span>
+                    </div>
+                </div>
+                <div class="role-slots">1 slot per squad</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function selectRole(roleName) {
+            mp.trigger('selectRole', roleName);
+        }
+    </script>
+</body>
+</html>

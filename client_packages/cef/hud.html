@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battle Arena HUD</title>
+    <link rel="stylesheet" href="styles/hud.css">
+</head>
+<body>
+    <!-- Top HUD Bar -->
+    <div class="hud-container">
+        <!-- Team Score -->
+        <div class="team-scores">
+            <div class="team-score team-1">
+                <span class="team-name">TEAM 1</span>
+                <span class="score" id="team1-score">0</span>
+            </div>
+            <div class="match-timer" id="match-timer">00:00</div>
+            <div class="team-score team-2">
+                <span class="team-name">TEAM 2</span>
+                <span class="score" id="team2-score">0</span>
+            </div>
+        </div>
+
+        <!-- Player Info -->
+        <div class="player-info">
+            <div class="player-stats">
+                <span class="stat"><i class="icon-kill"></i> <span id="kills">0</span></span>
+                <span class="stat"><i class="icon-death"></i> <span id="deaths">0</span></span>
+                <span class="stat"><i class="icon-assist"></i> <span id="assists">0</span></span>
+            </div>
+            <div class="role-indicator" id="role-indicator">
+                <span id="role-name">No Role</span>
+            </div>
+        </div>
+
+        <!-- Objectives Panel -->
+        <div class="objectives-panel" id="objectives-panel">
+            <div class="panel-header">
+                <h3>OBJECTIVES</h3>
+                <button class="close-btn" onclick="toggleObjectivesPanel()">×</button>
+            </div>
+            <div class="objectives-list" id="objectives-list">
+                <!-- Objectives will be added dynamically -->
+            </div>
+        </div>
+
+        <!-- Squad Panel -->
+        <div class="squad-panel" id="squad-panel">
+            <div class="panel-header">
+                <h3>SQUAD <span id="squad-number">1</span></h3>
+                <button class="close-btn" onclick="toggleSquadPanel()">×</button>
+            </div>
+            <div class="squad-members" id="squad-members">
+                <!-- Squad members will be added dynamically -->
+            </div>
+            <div class="squad-actions">
+                <button class="rally-btn" onclick="setRallyPoint()">Set Rally Point</button>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="notifications" id="notifications">
+            <!-- Notifications appear here -->
+        </div>
+
+        <!-- Minimap Objectives -->
+        <div class="minimap-overlay">
+            <div class="objective-indicators" id="objective-indicators">
+                <!-- Objective indicators on minimap -->
+            </div>
+        </div>
+    </div>
+
+    <script src="scripts/hud.js"></script>
+</body>
+</html>

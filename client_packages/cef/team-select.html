@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Selection</title>
+    <link rel="stylesheet" href="styles/team-select.css">
+</head>
+<body>
+    <div class="team-select-container">
+        <div class="title">
+            <h1>⚔️ BATTLE ARENA</h1>
+            <p>Select Your Team</p>
+        </div>
+
+        <div class="teams">
+            <!-- Team 1 -->
+            <div class="team-card team-1" onclick="selectTeam(1)">
+                <div class="team-icon">
+                    <img src="images/team1-icon.png" alt="Team 1" onerror="this.style.display='none'">
+                    <div class="team-flag">🇺🇸</div>
+                </div>
+                <h2>Task Force Phantom</h2>
+                <p class="team-desc">Elite special operations unit</p>
+                <div class="team-stats">
+                    <div class="stat">
+                        <span class="label">Players:</span>
+                        <span class="value" id="team1-players">0/50</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Win Rate:</span>
+                        <span class="value" id="team1-winrate">0%</span>
+                    </div>
+                </div>
+                <button class="select-btn">JOIN TEAM</button>
+            </div>
+
+            <!-- Team 2 -->
+            <div class="team-card team-2" onclick="selectTeam(2)">
+                <div class="team-icon">
+                    <img src="images/team2-icon.png" alt="Team 2" onerror="this.style.display='none'">
+                    <div class="team-flag">🇷🇺</div>
+                </div>
+                <h2>Soviet Defenders</h2>
+                <p class="team-desc">Tactical defense force</p>
+                <div class="team-stats">
+                    <div class="stat">
+                        <span class="label">Players:</span>
+                        <span class="value" id="team2-players">0/50</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Win Rate:</span>
+                        <span class="value" id="team2-winrate">0%</span>
+                    </div>
+                </div>
+                <button class="select-btn">JOIN TEAM</button>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Press <kbd>ESC</kbd> to auto-assign</p>
+        </div>
+    </div>
+
+    <script src="scripts/team-select.js"></script>
+</body>
+</html>

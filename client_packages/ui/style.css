@@ -1,0 +1,630 @@
+/* ============================================================================
+   BATTLE ARENA - UI Styles
+   Modern military-themed interface
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Rajdhani', sans-serif;
+    background: transparent;
+    color: #fff;
+    overflow: hidden;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* ============================================================================
+   COMMON ELEMENTS
+   ============================================================================ */
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px;
+}
+
+.title {
+    font-size: 48px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 40px;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+    animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+    from { text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); }
+    to { text-shadow: 0 0 20px rgba(255, 255, 255, 0.8), 0 0 30px rgba(255, 255, 255, 0.6); }
+}
+
+.btn {
+    padding: 12px 30px;
+    font-size: 18px;
+    font-weight: 600;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #0066ff, #0044cc);
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #0088ff, #0055dd);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 102, 255, 0.5);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ff3333, #cc0000);
+    color: #fff;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #ff5555, #dd1111);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 51, 51, 0.5);
+}
+
+/* ============================================================================
+   TEAM SELECTION SCREEN
+   ============================================================================ */
+
+#teamSelection {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(20, 20, 40, 0.95));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.team-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 40px;
+    max-width: 1200px;
+}
+
+.team-card {
+    background: rgba(20, 20, 30, 0.8);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.team-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.team-card:hover::before {
+    left: 100%;
+}
+
+.team-card.team1 {
+    border-color: rgba(0, 102, 255, 0.5);
+}
+
+.team-card.team1:hover {
+    border-color: rgba(0, 102, 255, 1);
+    box-shadow: 0 0 30px rgba(0, 102, 255, 0.5);
+    transform: translateY(-5px) scale(1.02);
+}
+
+.team-card.team2 {
+    border-color: rgba(255, 51, 51, 0.5);
+}
+
+.team-card.team2:hover {
+    border-color: rgba(255, 51, 51, 1);
+    box-shadow: 0 0 30px rgba(255, 51, 51, 0.5);
+    transform: translateY(-5px) scale(1.02);
+}
+
+.team-icon {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.team1 .team-icon svg {
+    fill: #0066ff;
+}
+
+.team2 .team-icon svg {
+    fill: #ff3333;
+}
+
+.team-card h2 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.team-desc {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 20px;
+}
+
+.team-stats {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+    padding: 15px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.icon {
+    margin-right: 5px;
+}
+
+/* ============================================================================
+   ROLE SELECTION SCREEN
+   ============================================================================ */
+
+#roleSelection {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(20, 20, 40, 0.95));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.role-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+    max-width: 1400px;
+}
+
+.role-card {
+    background: rgba(20, 20, 30, 0.8);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 25px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.role-card:hover {
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 25px rgba(255, 255, 255, 0.3);
+    transform: translateY(-5px);
+}
+
+.role-icon {
+    font-size: 60px;
+    margin-bottom: 15px;
+}
+
+.role-card h3 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.role-card p {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 15px;
+}
+
+.role-features {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.feature {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+    text-align: left;
+}
+
+/* ============================================================================
+   IN-GAME HUD
+   ============================================================================ */
+
+#hud {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    pointer-events: none;
+}
+
+#hud > * {
+    pointer-events: auto;
+}
+
+/* Top Bar */
+.hud-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 40px;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.8), transparent);
+}
+
+.team-score {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.score-label {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.score-value {
+    font-size: 36px;
+    color: #fff;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.match-info {
+    text-align: center;
+}
+
+.timer {
+    font-size: 32px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.mode {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 5px;
+}
+
+/* Bottom Left - Player Info */
+.hud-bottom-left {
+    position: absolute;
+    bottom: 40px;
+    left: 40px;
+}
+
+.player-info {
+    margin-bottom: 15px;
+}
+
+.health-bar, .armor-bar {
+    width: 250px;
+    height: 30px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    position: relative;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.health-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff3333, #ff6666);
+    transition: width 0.3s ease;
+}
+
+.armor-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3366ff, #6699ff);
+    transition: width 0.3s ease;
+}
+
+.health-text, .armor-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.role-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.role-icon {
+    font-size: 24px;
+}
+
+.role-name {
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Right Side - Objectives */
+.hud-right {
+    position: absolute;
+    top: 100px;
+    right: 40px;
+    width: 300px;
+}
+
+.objectives-title {
+    font-size: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 15px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.objectives-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.objective-item {
+    padding: 12px 15px;
+    background: rgba(0, 0, 0, 0.6);
+    border-left: 4px solid;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.objective-item.neutral { border-color: #ffffff; }
+.objective-item.team1 { border-color: #0066ff; }
+.objective-item.team2 { border-color: #ff3333; }
+
+.objective-name {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.objective-status {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+}
+
+/* Bottom Center - Squad Panel */
+.hud-bottom-center {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.squad-panel {
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 15px 20px;
+    min-width: 400px;
+}
+
+.squad-title {
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.squad-members {
+    display: flex;
+    gap: 15px;
+}
+
+.squad-member {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.member-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.member-name {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Notifications */
+.notifications {
+    position: absolute;
+    top: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 400px;
+    max-width: 600px;
+}
+
+.notification {
+    padding: 15px 20px;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+    animation: slideDown 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.notification.success {
+    background: rgba(0, 200, 0, 0.9);
+    border: 1px solid rgba(0, 255, 0, 0.5);
+}
+
+.notification.warning {
+    background: rgba(255, 150, 0, 0.9);
+    border: 1px solid rgba(255, 200, 0, 0.5);
+}
+
+.notification.danger {
+    background: rgba(200, 0, 0, 0.9);
+    border: 1px solid rgba(255, 0, 0, 0.5);
+}
+
+.notification.info {
+    background: rgba(0, 100, 200, 0.9);
+    border: 1px solid rgba(0, 150, 255, 0.5);
+}
+
+/* Keybinds Help */
+.keybinds {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    gap: 15px;
+}
+
+.keybind {
+    background: rgba(0, 0, 0, 0.6);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.key {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-weight: 700;
+    font-size: 11px;
+}
+
+/* Kill Feed */
+.killfeed {
+    position: absolute;
+    top: 100px;
+    left: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-width: 400px;
+}
+
+.kill-item {
+    background: rgba(0, 0, 0, 0.7);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideInLeft 0.3s ease;
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.killer { font-weight: 700; }
+.weapon { color: rgba(255, 255, 255, 0.6); }
+.victim { font-weight: 700; }
