@@ -54,21 +54,6 @@ const BATTLE_ZONES = [
             team1: { x: 2650.0, y: 1450.0, z: 24.5 },
             team2: { x: 2850.0, y: 1650.0, z: 24.5 }
         }
-    },
-    {
-        id: 'desert',
-        name: 'Desert Outpost',
-        center: { x: -1041.0, y: -2746.0, z: 21.0 },
-        radius: 600,
-        objectives: [
-            { name: 'Alpha - Radar Station', x: -1000.0, y: -2700.0, z: 21.0 },
-            { name: 'Bravo - Barracks', x: -1100.0, y: -2800.0, z: 21.0 },
-            { name: 'Charlie - Helipad', x: -1050.0, y: -2750.0, z: 21.0 }
-        ],
-        spawns: {
-            team1: { x: -950.0, y: -2650.0, z: 21.0 },
-            team2: { x: -1150.0, y: -2850.0, z: 21.0 }
-        }
     }
 ];
 
@@ -178,7 +163,7 @@ class GameState {
 }
 
 const gameState = new GameState();
-global.gameState = gameState; // Make available to AI module
+global.gameState = gameState;
 const vehicleManager = new VehicleManager(gameState);
 const fobManager = new FOBManager(gameState);
 const aiManager = new AIManager(gameState);
@@ -197,19 +182,16 @@ class Objective {
         this.radius = 50;
         this.playersInRadius = { 1: 0, 2: 0 };
         this.colshape = mp.colshapes.newSphere(x, y, z, this.radius);
-        
         console.log(`[OBJECTIVE] Created: ${name}`);
     }
 
     updateCapture(teamId) {
         if (this.capturedBy === teamId) return false;
-
         const playersNearby = this.playersInRadius[teamId] || 0;
         const enemyPlayers = this.playersInRadius[teamId === 1 ? 2 : 1] || 0;
         
         if (playersNearby > enemyPlayers) {
             this.captureProgress += (playersNearby - enemyPlayers) * 2;
-            
             if (this.captureProgress >= 100) {
                 this.capturedBy = teamId;
                 this.captureProgress = 100;
@@ -223,45 +205,223 @@ class Objective {
     }
 }
 
-// Rest of the file remains the same until AI commands section...
-// [Previous event handlers and functions continue here]
+// ============================================================================
+// PLAYER EVENTS
+// ============================================================================
+
+mp.events.add('playerJoin', (player) => {
+    console.log(`[JOIN] ${player.name} (${player.ip})`);
+    
+    player.position = new mp.Vector3(currentBattleZone.center.x, currentBattleZone.center.y, currentBattleZone.center.z + 50);
+    player.health = 100;
+    player.armour = 0;
+    
+    if (mp.players.length === 1) {
+        gameState.addAdmin(player.name);
+        gameState.addAdmin(player.socialClub);
+        player.outputChatBox('!{00FF00}You are now admin!');
+    }
+    
+    setTimeout(() => {
+        player.call('playerReady');
+        player.call('showTeamSelect');
+    }, 1000);
+});
+
+mp.events.add('playerQuit', (player) => {
+    gameState.removePlayer(player);
+});
+
+mp.events.add('playerDeath', (player, reason, killer) => {
+    const playerData = gameState.players.get(player.id);
+    if (playerData) {
+        playerData.deaths++;
+        
+        setTimeout(() => {
+            if (mp.players.exists(player)) {
+                const { fob } = fobManager.getNearestFOB(player, playerData.team);
+                const spawnPos = currentBattleZone.spawns[`team${playerData.team}`];
+                
+                player.spawn(new mp.Vector3(spawnPos.x, spawnPos.y, spawnPos.z));
+                player.health = 100;
+                giveRoleLoadout(player, playerData.role);
+            }
+        }, config.battle.respawn_time * 1000);
+    }
+    
+    if (killer && killer.id !== player.id) {
+        const killerData = gameState.players.get(killer.id);
+        if (killerData) {
+            killerData.kills++;
+            gameState.teamScores[killerData.team] += 10;
+            broadcastHUDUpdate();
+        }
+    }
+});
 
 // ============================================================================
-// AI BOT COMMANDS
+// UI EVENTS
+// ============================================================================
+
+mp.events.add('selectTeam', (player, teamId) => {
+    console.log(`[TEAM] ${player.name} selecting team ${teamId}`);
+    gameState.addPlayer(player, teamId);
+    player.call('showRoleSelect');
+});
+
+mp.events.add('selectRole', (player, roleName) => {
+    console.log(`[ROLE] ${player.name} selecting ${roleName}`);
+    
+    const playerData = gameState.players.get(player.id);
+    if (!playerData) {
+        console.error(`[ROLE] Player data not found for ${player.name}!`);
+        return;
+    }
+    
+    playerData.role = roleName;
+    player.call('hideAllMenus');
+    
+    const spawnPos = currentBattleZone.spawns[`team${playerData.team}`];
+    player.position = new mp.Vector3(
+        spawnPos.x + (Math.random() * 10 - 5),
+        spawnPos.y + (Math.random() * 10 - 5),
+        spawnPos.z
+    );
+    
+    giveRoleLoadout(player, roleName);
+    broadcastHUDUpdate();
+    
+    player.outputChatBox('!{00FF00}═══════════════════════════════');
+    player.outputChatBox(`!{00FF00}Role: ${roleName.toUpperCase()}`);
+    player.outputChatBox('!{FFFF00}Type /start to begin!');
+    player.outputChatBox('!{00FF00}═══════════════════════════════');
+    
+    console.log(`[ROLE] ${player.name} is now ${roleName}`);
+});
+
+// ============================================================================
+// LOADOUT SYSTEM
+// ============================================================================
+
+function giveRoleLoadout(player, role) {
+    player.removeAllWeapons();
+    
+    switch(role) {
+        case 'squad_leader':
+            player.giveWeapon(mp.joaat('weapon_carbinerifle'), 200);
+            player.giveWeapon(mp.joaat('weapon_pistol'), 50);
+            player.armour = 50;
+            break;
+        case 'rifleman':
+            player.giveWeapon(mp.joaat('weapon_assaultrifle'), 200);
+            player.armour = 25;
+            break;
+        case 'medic':
+            player.giveWeapon(mp.joaat('weapon_smg'), 150);
+            player.armour = 50;
+            break;
+        case 'engineer':
+            player.giveWeapon(mp.joaat('weapon_assaultsmg'), 150);
+            player.armour = 75;
+            break;
+        case 'marksman':
+            player.giveWeapon(mp.joaat('weapon_marksmanrifle'), 100);
+            player.armour = 0;
+            break;
+        case 'mg_gunner':
+            player.giveWeapon(mp.joaat('weapon_mg'), 300);
+            player.armour = 25;
+            break;
+        case 'at_gunner':
+            player.giveWeapon(mp.joaat('weapon_rpg'), 5);
+            player.armour = 25;
+            break;
+    }
+    
+    player.health = 100;
+}
+
+function broadcastHUDUpdate() {
+    mp.players.forEach(player => {
+        const playerData = gameState.players.get(player.id);
+        if (!playerData) return;
+        
+        const hudData = {
+            team: playerData.team,
+            role: playerData.role,
+            kills: playerData.kills,
+            deaths: playerData.deaths,
+            team1Score: gameState.teamScores[1],
+            team2Score: gameState.teamScores[2]
+        };
+        
+        try {
+            player.call('updateGameState', [JSON.stringify(hudData)]);
+        } catch (e) {}
+    });
+}
+
+function broadcastObjectivesUpdate() {
+    const objectivesData = gameState.objectives.map(obj => ({
+        name: obj.name,
+        x: obj.position.x,
+        y: obj.position.y,
+        z: obj.position.z,
+        capturedBy: obj.capturedBy,
+        captureProgress: obj.captureProgress,
+        playersInRadius: obj.playersInRadius
+    }));
+    
+    mp.players.forEach(player => {
+        try {
+            player.call('updateObjectives', [JSON.stringify(objectivesData)]);
+        } catch (e) {}
+    });
+}
+
+// ============================================================================
+// FOB COMMANDS
+// ============================================================================
+
+mp.events.addCommand('placefob', (player) => {
+    if (!gameState.matchActive) {
+        player.outputChatBox('!{FF0000}Match not active!');
+        return;
+    }
+    fobManager.placeFOB(player);
+});
+
+mp.events.addCommand('fobs', (player) => {
+    const playerData = gameState.players.get(player.id);
+    if (!playerData) return;
+    const teamFobs = fobManager.getFOBsForTeam(playerData.team);
+    player.outputChatBox(`!{00FF00}Team FOBs: ${teamFobs.length}`);
+});
+
+// ============================================================================
+// AI COMMANDS
 // ============================================================================
 
 mp.events.addCommand('spawnai', (player, fullText, count) => {
     const playerData = gameState.players.get(player.id);
     if (!playerData) return;
     
-    // Only Squad Leaders can spawn AI
     if (playerData.role !== 'squad_leader' && !gameState.isAdmin(player)) {
-        player.outputChatBox('!{FF0000}Only Squad Leaders can spawn AI!');
+        player.outputChatBox('!{FF0000}Squad Leaders only!');
         return;
     }
     
-    const numBots = parseInt(count) || 1;
-    if (numBots < 1 || numBots > 10) {
-        player.outputChatBox('!{FFAA00}Usage: /spawnai [1-10]');
-        return;
-    }
-    
-    for (let i = 0; i < numBots; i++) {
-        const offset = {
-            x: (Math.random() - 0.5) * 5,
-            y: (Math.random() - 0.5) * 5
-        };
-        
-        const spawnPos = new mp.Vector3(
-            player.position.x + offset.x,
-            player.position.y + offset.y,
+    const num = parseInt(count) || 1;
+    for (let i = 0; i < Math.min(num, 10); i++) {
+        const pos = new mp.Vector3(
+            player.position.x + (Math.random() - 0.5) * 5,
+            player.position.y + (Math.random() - 0.5) * 5,
             player.position.z
         );
-        
-        aiManager.spawnBot(spawnPos, playerData.team);
+        aiManager.spawnBot(pos, playerData.team);
     }
     
-    player.outputChatBox(`!{00FF00}[AI] Spawned ${numBots} AI soldier(s)`);
+    player.outputChatBox(`!{00FF00}[AI] Spawned ${num} bots`);
 });
 
 mp.events.addCommand('spawnaisquad', (player) => {
@@ -269,130 +429,99 @@ mp.events.addCommand('spawnaisquad', (player) => {
     if (!playerData) return;
     
     if (playerData.role !== 'squad_leader' && !gameState.isAdmin(player)) {
-        player.outputChatBox('!{FF0000}Only Squad Leaders can spawn AI squads!');
+        player.outputChatBox('!{FF0000}Squad Leaders only!');
         return;
     }
     
     const squad = aiManager.spawnSquad(player.position, playerData.team, player);
-    player.outputChatBox(`!{00FF00}[AI] Spawned AI squad (${squad.length} soldiers)`);
-    player.outputChatBox('!{00FFFF}AI will follow you!');
+    player.outputChatBox(`!{00FF00}[AI] Squad spawned (${squad.length})`);
 });
 
 mp.events.addCommand('aifollow', (player) => {
     const playerData = gameState.players.get(player.id);
     if (!playerData) return;
-    
     aiManager.commandBots(playerData.team, 'follow', player);
-    player.outputChatBox('!{00FF00}[AI] All AI soldiers will follow you');
+    player.outputChatBox('!{00FF00}[AI] Following');
 });
 
 mp.events.addCommand('aidefend', (player) => {
     const playerData = gameState.players.get(player.id);
     if (!playerData) return;
-    
     aiManager.commandBots(playerData.team, 'defend', player.position);
-    player.outputChatBox('!{00FF00}[AI] AI soldiers will defend this position');
+    player.outputChatBox('!{00FF00}[AI] Defending');
 });
 
 mp.events.addCommand('aiattack', (player) => {
     const playerData = gameState.players.get(player.id);
     if (!playerData) return;
-    
     aiManager.commandBots(playerData.team, 'attack');
-    player.outputChatBox('!{00FF00}[AI] AI soldiers will attack enemies!');
+    player.outputChatBox('!{00FF00}[AI] Attacking!');
 });
 
-mp.events.addCommand('aicount', (player) => {
-    const playerData = gameState.players.get(player.id);
-    if (!playerData) return;
-    
-    const teamBots = aiManager.getBotsForTeam(playerData.team);
-    const totalBots = aiManager.getBotCount();
-    
-    player.outputChatBox('!{00FFFF}═══ AI STATUS ═══');
-    player.outputChatBox(`!{00FF00}Your team: ${teamBots.length} AI`);
-    player.outputChatBox(`!{FFAA00}Total: ${totalBots} AI`);
-    player.outputChatBox(`!{FFAA00}Max per team: ${aiManager.maxBotsPerTeam}`);
-});
+// ============================================================================
+// ADMIN COMMANDS
+// ============================================================================
 
-mp.events.addCommand('clearai', (player) => {
-    if (!gameState.isAdmin(player)) {
-        player.outputChatBox('!{FF0000}Admin only');
+mp.events.addCommand('start', (player) => {
+    if (gameState.matchActive) {
+        player.outputChatBox('!{FF0000}Already active!');
         return;
     }
     
-    aiManager.removeAllBots();
-    player.outputChatBox('!{00FF00}[AI] All AI removed');
+    gameState.matchActive = true;
+    gameState.matchStartTime = Date.now();
+    gameState.teamScores = { 1: 0, 2: 0 };
+    
+    gameState.objectives = currentBattleZone.objectives.map((obj, index) => 
+        new Objective(`OBJ_${index}`, obj.name, obj.x, obj.y, obj.z)
+    );
+    
+    vehicleManager.spawnVehiclesForZone(currentBattleZone.id);
+    
+    mp.players.forEach(p => {
+        p.outputChatBox('!{00FF00}═══ MATCH STARTED ═══');
+    });
+    
+    broadcastObjectivesUpdate();
 });
 
-// [Previous commands continue...]
-// I'll add AI commands section and update the game loop
+mp.events.addCommand('tp', (player, fullText, x, y, z) => {
+    if (!gameState.isAdmin(player)) return;
+    player.position = new mp.Vector3(parseFloat(x), parseFloat(y), parseFloat(z));
+});
+
+mp.events.addCommand('pos', (player) => {
+    const pos = player.position;
+    player.outputChatBox(`!{00FFFF}${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}`);
+});
 
 // ============================================================================
-// GAME LOOP WITH AI
+// GAME LOOP
 // ============================================================================
 
 setInterval(() => {
     if (!gameState.matchActive) return;
-
-    gameState.objectives.forEach(obj => {
-        obj.playersInRadius = { 1: 0, 2: 0 };
-    });
-
-    mp.players.forEach(player => {
-        const playerData = gameState.players.get(player.id);
-        if (!playerData || !playerData.team) return;
-        
-        gameState.objectives.forEach(obj => {
-            const dist = player.position.subtract(
-                new mp.Vector3(obj.position.x, obj.position.y, obj.position.z)
-            ).length();
-            
-            if (dist < obj.radius) {
-                obj.playersInRadius[playerData.team]++;
-            }
-        });
-    });
-
-    gameState.objectives.forEach(obj => {
-        [1, 2].forEach(teamId => {
-            if (obj.updateCapture(teamId)) {
-                const team = gameState.getTeam(teamId);
-                gameState.teamScores[teamId] += 100;
-                
-                mp.players.forEach(p => {
-                    p.call('showNotification', [`${obj.name} captured by ${team.name}!`, 'warning']);
-                    p.outputChatBox(`!{00FF00}[CAPTURED] ${obj.name} by ${team.name}!`);
-                });
-                
-                console.log(`[OBJECTIVE] ${obj.name} captured by Team ${teamId}`);
-            }
-        });
-    });
-
-    // Update AI bots
-    aiManager.update();
     
+    aiManager.update();
     vehicleManager.update();
     fobManager.update();
+    
+    broadcastObjectivesUpdate();
 }, 1000);
 
+setInterval(() => {
+    broadcastHUDUpdate();
+}, 5000);
+
 // ============================================================================
-// SERVER READY
+// READY
 // ============================================================================
 
-console.log('[AI] AI Bot system ready');
-console.log('[VEHICLES] Vehicle system ready');
-console.log('[FOB] FOB system ready');
-console.log('[COMMANDS] /spawnai [count] - Spawn AI (Squad Leader)');
-console.log('[COMMANDS] /spawnaisquad - Spawn full AI squad (9 soldiers)');
-console.log('[COMMANDS] /aifollow - AI follow you');
-console.log('[COMMANDS] /aidefend - AI defend position');
-console.log('[COMMANDS] /aiattack - AI attack mode');
-console.log('[COMMANDS] /aicount - Check AI count');
+console.log('[AI] Bot system ready');
+console.log('[COMMANDS] /spawnai [count]');
+console.log('[COMMANDS] /aifollow /aidefend /aiattack');
 console.log('========================================');
-console.log('   BATTLE ARENA SERVER READY');
-console.log('   🤖 AI Bots, FOB, Vehicles - GO!');
+console.log('   SERVER READY');
 console.log('========================================');
 
 module.exports = gameState;
