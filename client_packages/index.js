@@ -1,6 +1,6 @@
 // ============================================================================
 // BATTLE ARENA - Client-Side Main Script
-// v2.4 - Main Menu Edition
+// v2.4 - Main Menu Edition with Force Cursor
 // ============================================================================
 
 const player = mp.players.local;
@@ -40,6 +40,11 @@ mp.events.add('playerReady', () => {
     }
     
     console.log('[CLIENT] HUD and capture bar loaded');
+    
+    // FORCE SHOW MAIN MENU WITH CURSOR AFTER 500ms
+    setTimeout(() => {
+        showMainMenu();
+    }, 500);
 });
 
 // ============================================================================
@@ -63,14 +68,30 @@ function showMainMenu() {
         captureBarBrowser.execute('document.body.style.display = "none";');
     }
     
+    // Create browser
     mainMenuBrowser = mp.browsers.new('package://cef/main-menu.html');
     
-    // SHOW CURSOR IMMEDIATELY
-    mp.gui.cursor.show(true, true);
+    // FORCE CURSOR - Multiple attempts for reliability
+    setTimeout(() => {
+        mp.gui.cursor.show(true, true);
+        console.log('[CLIENT] Cursor shown - Attempt 1');
+    }, 50);
+    
+    setTimeout(() => {
+        mp.gui.cursor.show(true, true);
+        console.log('[CLIENT] Cursor shown - Attempt 2');
+    }, 200);
+    
+    setTimeout(() => {
+        mp.gui.cursor.show(true, true);
+        console.log('[CLIENT] Cursor shown - Attempt 3');
+    }, 500);
+    
+    // Hide game UI
     mp.game.ui.displayRadar(false);
     mp.gui.chat.show(false);
     
-    console.log('[CLIENT] Main menu opened with cursor visible!');
+    console.log('[CLIENT] Main menu opened with forced cursor!');
 }
 
 function hideMainMenu() {
@@ -460,6 +481,16 @@ mp.keys.bind(0x1B, true, () => { // ESC
     }
 });
 
+// ============================================================================
+// MANUAL CURSOR TOGGLE FOR DEBUGGING
+// ============================================================================
+
+mp.keys.bind(0x46, true, () => { // F key - Force show cursor
+    mp.gui.cursor.show(true, true);
+    console.log('[DEBUG] Cursor force shown with F key');
+    mp.gui.chat.push('Cursor shown!');
+});
+
 console.log('[CLIENT] Battle Arena client loaded!');
-console.log('[CLIENT] Main menu system ready with cursor');
-console.log('[CLIENT] Must select mode before closing menu');
+console.log('[CLIENT] Main menu will auto-open with cursor');
+console.log('[CLIENT] Press F to force show cursor if needed');
