@@ -7,6 +7,7 @@ const player = mp.players.local;
 let hudBrowser = null;
 let teamSelectBrowser = null;
 let roleSelectBrowser = null;
+let captureBarBrowser = null;
 let scoreBrowser = null;
 let gameState = {
     team: null,
@@ -26,6 +27,9 @@ mp.events.add('playerReady', () => {
     
     // Create HUD browser
     hudBrowser = mp.browsers.new('package://cef/hud.html');
+    
+    // Create capture bar browser (always loaded but hidden)
+    captureBarBrowser = mp.browsers.new('package://cef/capture-bar.html');
     
     // Show team selection on spawn
     setTimeout(() => {
@@ -116,11 +120,22 @@ mp.events.add('updateObjectives', (objectivesData) => {
 });
 
 // ============================================================================
+// CAPTURE BAR UI
+// ============================================================================
+
+mp.events.add('updateCaptureProgress', (data) => {
+    if (captureBarBrowser) {
+        captureBarBrowser.execute(`updateCaptureProgress(${data});`);
+    }
+});
+
+// ============================================================================
 // EVENTS FROM CEF (Browser)
 // ============================================================================
 
 mp.events.add('cef:selectTeam', (teamId) => {
     mp.events.callRemote('selectTeam', parseInt(teamId));
+    gameState.team = parseInt(teamId);
     hideTeamSelection();
     showRoleSelection();
 });
@@ -145,6 +160,7 @@ mp.events.add('cef:openSquadMenu', () => {
 
 let objectiveBlips = [];
 let currentObjectives = [];
+let lastCaptureUpdate = 0;
 
 function createObjectiveMarkers(objectives) {
     // Clear old blips
@@ -177,6 +193,8 @@ mp.events.add('createObjectiveMarkers', (data) => {
 
 // Draw objective cylinder markers on ground
 mp.events.add('render', () => {
+    const playerPos = mp.players.local.position;
+    
     currentObjectives.forEach(obj => {
         const color = obj.capturedBy === 1 ? [0, 100, 255, 100] : 
                      (obj.capturedBy === 2 ? [255, 50, 50, 100] : [255, 200, 0, 100]);
@@ -191,6 +209,31 @@ mp.events.add('render', () => {
             color[0], color[1], color[2], color[3],
             false, true, 2, false, null, null, false
         );
+        
+        // Check if player is in objective radius
+        const objPos = new mp.Vector3(obj.x, obj.y, obj.z);
+        const dist = playerPos.subtract(objPos).length();
+        
+        if (dist < obj.radius) {
+            // Player is capturing - update capture bar
+            const now = Date.now();
+            if (now - lastCaptureUpdate > 200) { // Update every 200ms
+                lastCaptureUpdate = now;
+                
+                const captureData = {
+                    name: obj.name,
+                    progress: obj.captureProgress || 0,
+                    capturedBy: obj.capturedBy || 0,
+                    team1Players: obj.playersInRadius ? obj.playersInRadius[1] : 0,
+                    team2Players: obj.playersInRadius ? obj.playersInRadius[2] : 0,
+                    isCapturing: true
+                };
+                
+                if (captureBarBrowser) {
+                    captureBarBrowser.execute(`updateCaptureProgress(${JSON.stringify(captureData)});`);
+                }
+            }
+        }
     });
 });
 
@@ -256,3 +299,4 @@ mp.keys.bind(0x42, true, () => { // B key - Spawn menu
 });
 
 console.log('[CLIENT] Battle Arena client-side loaded!');
+console.log('[CLIENT] Capture bar UI initialized');
