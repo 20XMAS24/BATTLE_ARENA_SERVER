@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Killfeed</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: transparent;
+        }
+
+        .killfeed {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            width: 380px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .kill-entry {
+            display: flex;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 10px 15px;
+            border-radius: 6px;
+            border-left: 3px solid;
+            animation: slideIn 0.3s ease-out, fadeOut 0.5s ease-in 4.5s forwards;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+        }
+
+        /* Team colors for border */
+        .kill-entry.team1 { border-left-color: #4169E1; }
+        .kill-entry.team2 { border-left-color: #DC143C; }
+        .kill-entry.headshot { border-left-color: #FFD700; }
+
+        .killer-name {
+            font-weight: bold;
+            font-size: 14px;
+            color: #fff;
+            margin-right: 10px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        .killer-name.team1 { color: #5B9BD5; }
+        .killer-name.team2 { color: #FF6B6B; }
+
+        .weapon-icon {
+            width: 32px;
+            height: 32px;
+            margin: 0 8px;
+            filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.8));
+        }
+
+        .weapon-name {
+            font-size: 11px;
+            color: #aaa;
+            margin: 0 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .victim-name {
+            font-weight: bold;
+            font-size: 14px;
+            color: #fff;
+            margin-left: 10px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        .victim-name.team1 { color: #5B9BD5; }
+        .victim-name.team2 { color: #FF6B6B; }
+
+        .headshot-icon {
+            font-size: 16px;
+            margin-left: 6px;
+            animation: pulse 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.2); }
+        }
+
+        .kill-distance {
+            font-size: 10px;
+            color: #666;
+            margin-left: auto;
+            padding-left: 10px;
+        }
+
+        /* Suicide/Teamkill special styling */
+        .kill-entry.suicide {
+            border-left-color: #666;
+            background: rgba(50, 50, 50, 0.75);
+        }
+
+        .kill-entry.teamkill {
+            border-left-color: #FFA500;
+            background: rgba(255, 165, 0, 0.15);
+        }
+
+        .skull-icon {
+            font-size: 20px;
+            margin: 0 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="killfeed" id="killfeed"></div>
+
+    <script>
+        console.log('[KILLFEED] Loaded');
+
+        const killfeed = document.getElementById('killfeed');
+        let killCounter = 0;
+
+        // Weapon icons mapping (emoji for simplicity)
+        const weaponIcons = {
+            // Rifles
+            'AK-47': '🔫',
+            'M4A1': '🔫',
+            'SCAR': '🔫',
+            'AKM': '🔫',
+            // SMG
+            'MP5': '🔫',
+            'UMP45': '🔫',
+            // Sniper
+            'AWP': '🎯',
+            'M24': '🎯',
+            'SVD': '🎯',
+            // Shotgun
+            'SPAS-12': '💥',
+            'M1014': '💥',
+            // Pistol
+            'Desert Eagle': '🔫',
+            'Glock': '🔫',
+            'M1911': '🔫',
+            // Explosives
+            'Grenade': '💣',
+            'C4': '💣',
+            'RPG': '🚀',
+            // Melee
+            'Knife': '🔪',
+            'Fists': '👊',
+            // Vehicle
+            'Vehicle': '🚗',
+            'Tank': '🛡️',
+            'Helicopter': '🚁',
+            // Default
+            'default': '💀'
+        };
+
+        function addKill(data) {
+            console.log('[KILLFEED] New kill:', data);
+
+            const entry = document.createElement('div');
+            entry.className = `kill-entry ${data.type || ''}`;
+            
+            // Add team class for border
+            if (data.killerTeam) {
+                entry.classList.add(`team${data.killerTeam}`);
+            }
+
+            let html = '';
+
+            // Suicide
+            if (data.type === 'suicide') {
+                html = `
+                    <span class="victim-name team${data.victimTeam}">${data.victimName}</span>
+                    <span class="skull-icon">💀</span>
+                    <span class="weapon-name">Suicide</span>
+                `;
+            }
+            // Teamkill
+            else if (data.type === 'teamkill') {
+                html = `
+                    <span class="killer-name team${data.killerTeam}">${data.killerName}</span>
+                    <span class="weapon-icon">${weaponIcons[data.weapon] || weaponIcons.default}</span>
+                    <span class="weapon-name" style="color: #FFA500;">[TK]</span>
+                    <span class="victim-name team${data.victimTeam}">${data.victimName}</span>
+                `;
+            }
+            // Normal kill
+            else {
+                html = `
+                    <span class="killer-name team${data.killerTeam}">${data.killerName}</span>
+                    <span class="weapon-icon">${weaponIcons[data.weapon] || weaponIcons.default}</span>
+                    <span class="weapon-name">${data.weapon}</span>
+                    <span class="victim-name team${data.victimTeam}">${data.victimName}</span>
+                `;
+
+                // Headshot
+                if (data.headshot) {
+                    entry.classList.add('headshot');
+                    html += '<span class="headshot-icon">🎯</span>';
+                }
+
+                // Distance
+                if (data.distance) {
+                    html += `<span class="kill-distance">${Math.round(data.distance)}m</span>`;
+                }
+            }
+
+            entry.innerHTML = html;
+            killfeed.insertBefore(entry, killfeed.firstChild);
+
+            // Remove after 5 seconds
+            setTimeout(() => {
+                if (entry.parentNode) {
+                    entry.remove();
+                }
+            }, 5000);
+
+            // Limit to 10 entries
+            while (killfeed.children.length > 10) {
+                killfeed.removeChild(killfeed.lastChild);
+            }
+        }
+
+        function clearKillfeed() {
+            killfeed.innerHTML = '';
+        }
+
+        // Test function
+        function testKillfeed() {
+            const testKills = [
+                {
+                    killerName: 'Player1',
+                    killerTeam: 1,
+                    victimName: 'Enemy1',
+                    victimTeam: 2,
+                    weapon: 'AK-47',
+                    headshot: false,
+                    distance: 50
+                },
+                {
+                    killerName: 'Sniper',
+                    killerTeam: 2,
+                    victimName: 'Target',
+                    victimTeam: 1,
+                    weapon: 'AWP',
+                    headshot: true,
+                    distance: 150
+                },
+                {
+                    victimName: 'Noob',
+                    victimTeam: 1,
+                    type: 'suicide'
+                },
+                {
+                    killerName: 'TKer',
+                    killerTeam: 1,
+                    victimName: 'Teammate',
+                    victimTeam: 1,
+                    weapon: 'M4A1',
+                    type: 'teamkill'
+                }
+            ];
+
+            let i = 0;
+            const interval = setInterval(() => {
+                if (i >= testKills.length) {
+                    clearInterval(interval);
+                    return;
+                }
+                addKill(testKills[i]);
+                i++;
+            }, 1000);
+        }
+
+        // Expose to parent window
+        if (typeof mp !== 'undefined') {
+            // RAGE:MP events will call these
+        } else {
+            // Browser test mode
+            console.log('[KILLFEED] Browser test mode - use testKillfeed()');
+            window.addKill = addKill;
+            window.testKillfeed = testKillfeed;
+        }
+    </script>
+</body>
+</html>
