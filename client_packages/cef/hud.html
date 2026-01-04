@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Battle Arena HUD</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            overflow: hidden;
+            background: transparent;
+        }
+
+        /* HUD Container */
+        #hud {
+            position: fixed;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+        }
+
+        /* Health & Armor */
+        .stats-container {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .stat-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .stat-bar-bg {
+            width: 200px;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 5px;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .stat-bar-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+        }
+
+        .health-fill {
+            background: linear-gradient(90deg, #e74c3c, #c0392b);
+        }
+
+        .armor-fill {
+            background: linear-gradient(90deg, #3498db, #2980b9);
+        }
+
+        /* Team Info */
+        .team-info {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 20px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            min-width: 250px;
+        }
+
+        .team-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+
+        .team-info-item {
+            font-size: 14px;
+            color: #ccc;
+            margin: 3px 0;
+        }
+
+        .team-info-item strong {
+            color: #fff;
+        }
+
+        /* Notifications */
+        .notifications {
+            position: absolute;
+            top: 100px;
+            right: 30px;
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .notification {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 20px;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+            color: white;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .notification.success {
+            border-left-color: #27ae60;
+        }
+
+        .notification.error {
+            border-left-color: #e74c3c;
+        }
+
+        .notification.warning {
+            border-left-color: #f39c12;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Minimap placeholder */
+        .minimap {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            width: 250px;
+            height: 250px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* Objective list */
+        .objectives {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            min-width: 200px;
+        }
+
+        .objectives-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+            padding-bottom: 5px;
+        }
+
+        .objective-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        .objective-status {
+            font-weight: bold;
+        }
+
+        .objective-status.neutral {
+            color: #95a5a6;
+        }
+
+        .objective-status.team1 {
+            color: #3498db;
+        }
+
+        .objective-status.team2 {
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div id="hud">
+        <!-- Stats (Health/Armor) -->
+        <div class="stats-container">
+            <div class="stat-bar">
+                <div class="stat-icon">❤️</div>
+                <div class="stat-bar-bg">
+                    <div class="stat-bar-fill health-fill" id="health-bar" style="width: 100%">
+                        <span id="health-text">100</span>
+                    </div>
+                </div>
+            </div>
+            <div class="stat-bar">
+                <div class="stat-icon">🛡️</div>
+                <div class="stat-bar-bg">
+                    <div class="stat-bar-fill armor-fill" id="armor-bar" style="width: 0%">
+                        <span id="armor-text">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Team Info -->
+        <div class="team-info" id="team-info" style="display: none;">
+            <div class="team-name" id="team-name">Team 1</div>
+            <div class="team-info-item"><strong>Role:</strong> <span id="role-name">-</span></div>
+            <div class="team-info-item"><strong>Squad:</strong> <span id="squad-name">-</span></div>
+        </div>
+
+        <!-- Objectives -->
+        <div class="objectives" id="objectives" style="display: none;">
+            <div class="objectives-title">🎯 Objectives</div>
+            <div id="objectives-list"></div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="notifications" id="notifications"></div>
+
+        <!-- Minimap placeholder -->
+        <!-- <div class="minimap">Minimap</div> -->
+    </div>
+
+    <script>
+        function updateHUD(data) {
+            // Update health
+            const healthBar = document.getElementById('health-bar');
+            const healthText = document.getElementById('health-text');
+            healthBar.style.width = data.health + '%';
+            healthText.textContent = Math.round(data.health);
+
+            // Update armor
+            const armorBar = document.getElementById('armor-bar');
+            const armorText = document.getElementById('armor-text');
+            armorBar.style.width = data.armor + '%';
+            armorText.textContent = Math.round(data.armor);
+
+            // Update team info
+            if (data.team) {
+                const teamInfo = document.getElementById('team-info');
+                teamInfo.style.display = 'block';
+                document.getElementById('team-name').textContent = 'Team ' + data.team;
+                document.getElementById('role-name').textContent = data.role || '-';
+                document.getElementById('squad-name').textContent = data.squad || '-';
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const notifications = document.getElementById('notifications');
+            
+            const notif = document.createElement('div');
+            notif.className = 'notification ' + type;
+            notif.textContent = message;
+            
+            notifications.appendChild(notif);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                notif.style.animation = 'slideIn 0.3s ease reverse';
+                setTimeout(() => notif.remove(), 300);
+            }, 5000);
+        }
+
+        function updateObjectives(objectives) {
+            const objContainer = document.getElementById('objectives');
+            const objList = document.getElementById('objectives-list');
+            
+            if (objectives && objectives.length > 0) {
+                objContainer.style.display = 'block';
+                objList.innerHTML = '';
+                
+                objectives.forEach(obj => {
+                    const item = document.createElement('div');
+                    item.className = 'objective-item';
+                    
+                    const name = document.createElement('span');
+                    name.textContent = obj.name;
+                    
+                    const status = document.createElement('span');
+                    status.className = 'objective-status ' + (obj.team ? 'team' + obj.team : 'neutral');
+                    status.textContent = obj.team ? 'Team ' + obj.team : 'Neutral';
+                    
+                    item.appendChild(name);
+                    item.appendChild(status);
+                    objList.appendChild(item);
+                });
+            }
+        }
+    </script>
+</body>
+</html>

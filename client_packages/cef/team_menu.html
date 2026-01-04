@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Team Selection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: white;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 1200px;
+            padding: 40px;
+        }
+
+        .title {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            margin-bottom: 60px;
+            opacity: 0.8;
+        }
+
+        .teams {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+        }
+
+        .team-card {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 15px;
+            padding: 40px;
+            width: 400px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .team-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.1) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .team-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .team-card:hover::before {
+            opacity: 1;
+        }
+
+        .team-card.team1 {
+            border-color: #3498db;
+        }
+
+        .team-card.team1:hover {
+            border-color: #5dade2;
+            box-shadow: 0 20px 40px rgba(52, 152, 219, 0.4);
+        }
+
+        .team-card.team2 {
+            border-color: #e74c3c;
+        }
+
+        .team-card.team2:hover {
+            border-color: #ec7063;
+            box-shadow: 0 20px 40px rgba(231, 76, 60, 0.4);
+        }
+
+        .team-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        .team-name {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .team-description {
+            font-size: 16px;
+            opacity: 0.8;
+            line-height: 1.6;
+        }
+
+        .team-stats {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .stat-label {
+            opacity: 0.7;
+        }
+
+        .stat-value {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">⚔️ BATTLE ARENA</div>
+        <div class="subtitle">Select Your Team</div>
+        
+        <div class="teams">
+            <div class="team-card team1" onclick="selectTeam(1)">
+                <div class="team-icon">🔵</div>
+                <div class="team-name">Task Force Phantom</div>
+                <div class="team-description">
+                    Elite special operations unit with advanced tactics and superior firepower.
+                </div>
+                <div class="team-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Faction</span>
+                        <span class="stat-value">USA</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Color</span>
+                        <span class="stat-value" style="color: #3498db;">Blue</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Players</span>
+                        <span class="stat-value">0/50</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="team-card team2" onclick="selectTeam(2)">
+                <div class="team-icon">🔴</div>
+                <div class="team-name">Soviet Defenders</div>
+                <div class="team-description">
+                    Battle-hardened defenders with robust equipment and strategic positioning.
+                </div>
+                <div class="team-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Faction</span>
+                        <span class="stat-value">Russia</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Color</span>
+                        <span class="stat-value" style="color: #e74c3c;">Red</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Players</span>
+                        <span class="stat-value">0/50</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function selectTeam(teamId) {
+            mp.trigger('selectTeam', teamId);
+        }
+    </script>
+</body>
+</html>
