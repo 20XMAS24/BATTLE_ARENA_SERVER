@@ -33,6 +33,11 @@ mp.events.add('playerReady', () => {
     // Create capture bar browser (hidden initially)
     captureBarBrowser = mp.browsers.new('package://cef/capture-bar.html');
     
+    // Hide HUD initially
+    if (hudBrowser) {
+        hudBrowser.execute('document.body.style.display = "none";');
+    }
+    
     console.log('[CLIENT] HUD and capture bar loaded');
 });
 
@@ -45,6 +50,14 @@ function showMainMenu() {
     
     if (mainMenuBrowser) {
         mainMenuBrowser.destroy();
+    }
+    
+    // Hide HUD
+    if (hudBrowser) {
+        hudBrowser.execute('document.body.style.display = "none";');
+    }
+    if (captureBarBrowser) {
+        captureBarBrowser.execute('document.body.style.display = "none";');
     }
     
     mainMenuBrowser = mp.browsers.new('package://cef/main-menu.html');
@@ -63,6 +76,14 @@ function hideMainMenu() {
         mainMenuBrowser = null;
     }
     
+    // Show HUD
+    if (hudBrowser) {
+        hudBrowser.execute('document.body.style.display = "block";');
+    }
+    if (captureBarBrowser) {
+        captureBarBrowser.execute('document.body.style.display = "block";');
+    }
+    
     mp.gui.cursor.show(false, false);
     mp.game.ui.displayRadar(true);
     mp.gui.chat.show(true);
@@ -78,7 +99,7 @@ mp.events.add('hideMainMenu', () => {
 
 // Update main menu stats
 mp.events.add('updateMainMenuStats', (statsJson) => {
-    console.log('[CLIENT] Updating main menu stats:', statsJson);
+    console.log('[CLIENT] Updating main menu stats');
     
     if (mainMenuBrowser) {
         mainMenuBrowser.execute(`updateServerStats('${statsJson}')`);
@@ -115,6 +136,11 @@ function showTeamSelection() {
     
     if (teamSelectBrowser) return;
     
+    // Hide HUD
+    if (hudBrowser) {
+        hudBrowser.execute('document.body.style.display = "none";');
+    }
+    
     teamSelectBrowser = mp.browsers.new('package://cef/team-select.html');
     mp.gui.cursor.show(true, true);
     mp.game.ui.displayRadar(false);
@@ -128,6 +154,11 @@ function hideTeamSelection() {
         teamSelectBrowser = null;
         mp.gui.cursor.show(false, false);
         mp.game.ui.displayRadar(true);
+        
+        // Show HUD
+        if (hudBrowser) {
+            hudBrowser.execute('document.body.style.display = "block";');
+        }
     }
 }
 
@@ -144,6 +175,11 @@ function showRoleSelection() {
     
     if (roleSelectBrowser) {
         roleSelectBrowser.destroy();
+    }
+    
+    // Hide HUD
+    if (hudBrowser) {
+        hudBrowser.execute('document.body.style.display = "none";');
     }
     
     roleSelectBrowser = mp.browsers.new('package://cef/role-select.html');
@@ -164,6 +200,14 @@ function hideRoleSelection() {
     mp.gui.cursor.show(false, false);
     mp.game.ui.displayRadar(true);
     mp.gui.chat.show(true);
+    
+    // Show HUD
+    if (hudBrowser) {
+        hudBrowser.execute('document.body.style.display = "block";');
+    }
+    if (captureBarBrowser) {
+        captureBarBrowser.execute('document.body.style.display = "block";');
+    }
 }
 
 mp.events.add('showRoleSelect', () => {
@@ -367,19 +411,19 @@ mp.events.add('createFOB', (x, y, z, teamId) => {
 // ============================================================================
 
 mp.keys.bind(0x4D, true, () => { // M key
-    if (hudBrowser) {
+    if (hudBrowser && !mainMenuBrowser && !roleSelectBrowser) {
         hudBrowser.execute('toggleObjectivesPanel();');
     }
 });
 
 mp.keys.bind(0x54, true, () => { // T key
-    if (hudBrowser) {
+    if (hudBrowser && !mainMenuBrowser && !roleSelectBrowser) {
         hudBrowser.execute('toggleSquadPanel();');
     }
 });
 
 mp.keys.bind(0x42, true, () => { // B key
-    if (hudBrowser) {
+    if (hudBrowser && !mainMenuBrowser && !roleSelectBrowser) {
         hudBrowser.execute('toggleSpawnMenu();');
     }
 });
@@ -397,4 +441,4 @@ mp.keys.bind(0x1B, true, () => { // ESC
 
 console.log('[CLIENT] Battle Arena client loaded!');
 console.log('[CLIENT] Main menu system ready');
-console.log('[CLIENT] Press ESC to close menus');
+console.log('[CLIENT] HUD will be hidden when menus are open');
