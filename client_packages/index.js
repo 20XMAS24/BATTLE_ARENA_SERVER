@@ -9,6 +9,7 @@ let mainMenuBrowser = null;
 let teamSelectBrowser = null;
 let roleSelectBrowser = null;
 let captureBarBrowser = null;
+let modeSelected = false;
 let gameState = {
     team: null,
     role: null,
@@ -52,6 +53,8 @@ function showMainMenu() {
         mainMenuBrowser.destroy();
     }
     
+    modeSelected = false; // Reset mode selection
+    
     // Hide HUD
     if (hudBrowser) {
         hudBrowser.execute('document.body.style.display = "none";');
@@ -61,11 +64,13 @@ function showMainMenu() {
     }
     
     mainMenuBrowser = mp.browsers.new('package://cef/main-menu.html');
+    
+    // SHOW CURSOR IMMEDIATELY
     mp.gui.cursor.show(true, true);
     mp.game.ui.displayRadar(false);
     mp.gui.chat.show(false);
     
-    console.log('[CLIENT] Main menu opened!');
+    console.log('[CLIENT] Main menu opened with cursor visible!');
 }
 
 function hideMainMenu() {
@@ -94,7 +99,13 @@ mp.events.add('showMainMenu', () => {
 });
 
 mp.events.add('hideMainMenu', () => {
-    hideMainMenu();
+    // Only allow closing if mode was selected
+    if (modeSelected) {
+        hideMainMenu();
+    } else {
+        console.log('[CLIENT] Cannot close main menu - no mode selected');
+        mp.gui.chat.push('!{FF0000}You must select a game mode first!');
+    }
 });
 
 // Update main menu stats
@@ -111,6 +122,7 @@ mp.events.add('selectTeamAndMode', (teamId, gameMode) => {
     console.log(`[CLIENT] Selected team ${teamId}, mode ${gameMode}`);
     
     gameState.team = teamId;
+    modeSelected = true; // Mark that mode was selected
     
     // Tell server
     mp.events.callRemote('selectTeamAndMode', teamId, gameMode);
@@ -120,7 +132,11 @@ mp.events.add('selectTeamAndMode', (teamId, gameMode) => {
 });
 
 mp.events.add('closeMainMenu', () => {
-    hideMainMenu();
+    if (modeSelected) {
+        hideMainMenu();
+    } else {
+        console.log('[CLIENT] Blocked - must select mode first');
+    }
 });
 
 mp.events.add('requestServerStats', () => {
@@ -428,10 +444,15 @@ mp.keys.bind(0x42, true, () => { // B key
     }
 });
 
-// ESC to close menus
+// ESC to close menus - WITH MODE CHECK
 mp.keys.bind(0x1B, true, () => { // ESC
     if (mainMenuBrowser) {
-        hideMainMenu();
+        if (modeSelected) {
+            hideMainMenu();
+        } else {
+            console.log('[CLIENT] Cannot close - select a mode first!');
+            mp.gui.chat.push('!{FF0000}Select a game mode first!');
+        }
     } else if (roleSelectBrowser) {
         hideRoleSelection();
     } else if (teamSelectBrowser) {
@@ -440,5 +461,5 @@ mp.keys.bind(0x1B, true, () => { // ESC
 });
 
 console.log('[CLIENT] Battle Arena client loaded!');
-console.log('[CLIENT] Main menu system ready');
-console.log('[CLIENT] HUD will be hidden when menus are open');
+console.log('[CLIENT] Main menu system ready with cursor');
+console.log('[CLIENT] Must select mode before closing menu');
