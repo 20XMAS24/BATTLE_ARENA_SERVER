@@ -1,6 +1,6 @@
 // ============================================================================
 // BATTLE ARENA - Client-Side Main Script
-// v2.4 - Main Menu Edition with Force Cursor
+// v2.5 - With Killfeed & Minimap
 // ============================================================================
 
 const player = mp.players.local;
@@ -9,6 +9,8 @@ let mainMenuBrowser = null;
 let teamSelectBrowser = null;
 let roleSelectBrowser = null;
 let captureBarBrowser = null;
+let killfeedBrowser = null;
+let minimapBrowser = null;
 let modeSelected = false;
 let gameState = {
     team: null,
@@ -34,12 +36,18 @@ mp.events.add('playerReady', () => {
     // Create capture bar browser (hidden initially)
     captureBarBrowser = mp.browsers.new('package://cef/capture-bar.html');
     
+    // Create killfeed browser
+    killfeedBrowser = mp.browsers.new('package://cef/killfeed.html');
+    
+    // Create minimap browser
+    minimapBrowser = mp.browsers.new('package://cef/minimap.html');
+    
     // Hide HUD initially
     if (hudBrowser) {
         hudBrowser.execute('document.body.style.display = "none";');
     }
     
-    console.log('[CLIENT] HUD and capture bar loaded');
+    console.log('[CLIENT] All UI loaded: HUD, Capture Bar, Killfeed, Minimap');
     
     // FORCE SHOW MAIN MENU WITH CURSOR AFTER 500ms
     setTimeout(() => {
@@ -58,40 +66,25 @@ function showMainMenu() {
         mainMenuBrowser.destroy();
     }
     
-    modeSelected = false; // Reset mode selection
+    modeSelected = false;
     
-    // Hide HUD
-    if (hudBrowser) {
-        hudBrowser.execute('document.body.style.display = "none";');
-    }
-    if (captureBarBrowser) {
-        captureBarBrowser.execute('document.body.style.display = "none";');
-    }
+    // Hide all game UI
+    if (hudBrowser) hudBrowser.execute('document.body.style.display = "none";');
+    if (captureBarBrowser) captureBarBrowser.execute('document.body.style.display = "none";');
+    if (killfeedBrowser) killfeedBrowser.execute('document.body.style.display = "none";');
+    if (minimapBrowser) minimapBrowser.execute('document.body.style.display = "none";');
     
-    // Create browser
     mainMenuBrowser = mp.browsers.new('package://cef/main-menu.html');
     
-    // FORCE CURSOR - Multiple attempts for reliability
-    setTimeout(() => {
-        mp.gui.cursor.show(true, true);
-        console.log('[CLIENT] Cursor shown - Attempt 1');
-    }, 50);
+    // FORCE CURSOR - Multiple attempts
+    setTimeout(() => mp.gui.cursor.show(true, true), 50);
+    setTimeout(() => mp.gui.cursor.show(true, true), 200);
+    setTimeout(() => mp.gui.cursor.show(true, true), 500);
     
-    setTimeout(() => {
-        mp.gui.cursor.show(true, true);
-        console.log('[CLIENT] Cursor shown - Attempt 2');
-    }, 200);
-    
-    setTimeout(() => {
-        mp.gui.cursor.show(true, true);
-        console.log('[CLIENT] Cursor shown - Attempt 3');
-    }, 500);
-    
-    // Hide game UI
     mp.game.ui.displayRadar(false);
     mp.gui.chat.show(false);
     
-    console.log('[CLIENT] Main menu opened with forced cursor!');
+    console.log('[CLIENT] Main menu opened!');
 }
 
 function hideMainMenu() {
@@ -102,62 +95,44 @@ function hideMainMenu() {
         mainMenuBrowser = null;
     }
     
-    // Show HUD
-    if (hudBrowser) {
-        hudBrowser.execute('document.body.style.display = "block";');
-    }
-    if (captureBarBrowser) {
-        captureBarBrowser.execute('document.body.style.display = "block";');
-    }
+    // Show all game UI
+    if (hudBrowser) hudBrowser.execute('document.body.style.display = "block";');
+    if (captureBarBrowser) captureBarBrowser.execute('document.body.style.display = "block";');
+    if (killfeedBrowser) killfeedBrowser.execute('document.body.style.display = "block";');
+    if (minimapBrowser) minimapBrowser.execute('document.body.style.display = "block";');
     
     mp.gui.cursor.show(false, false);
     mp.game.ui.displayRadar(true);
     mp.gui.chat.show(true);
 }
 
-mp.events.add('showMainMenu', () => {
-    showMainMenu();
-});
+mp.events.add('showMainMenu', showMainMenu);
 
 mp.events.add('hideMainMenu', () => {
-    // Only allow closing if mode was selected
     if (modeSelected) {
         hideMainMenu();
     } else {
-        console.log('[CLIENT] Cannot close main menu - no mode selected');
-        mp.gui.chat.push('!{FF0000}You must select a game mode first!');
+        console.log('[CLIENT] Cannot close - select mode first');
+        mp.gui.chat.push('!{FF0000}Select a game mode first!');
     }
 });
 
-// Update main menu stats
 mp.events.add('updateMainMenuStats', (statsJson) => {
-    console.log('[CLIENT] Updating main menu stats');
-    
     if (mainMenuBrowser) {
         mainMenuBrowser.execute(`updateServerStats('${statsJson}')`);
     }
 });
 
-// Player selected team and mode from main menu
 mp.events.add('selectTeamAndMode', (teamId, gameMode) => {
-    console.log(`[CLIENT] Selected team ${teamId}, mode ${gameMode}`);
-    
+    console.log(`[CLIENT] Team ${teamId}, Mode ${gameMode}`);
     gameState.team = teamId;
-    modeSelected = true; // Mark that mode was selected
-    
-    // Tell server
+    modeSelected = true;
     mp.events.callRemote('selectTeamAndMode', teamId, gameMode);
-    
-    // Close main menu
     hideMainMenu();
 });
 
 mp.events.add('closeMainMenu', () => {
-    if (modeSelected) {
-        hideMainMenu();
-    } else {
-        console.log('[CLIENT] Blocked - must select mode first');
-    }
+    if (modeSelected) hideMainMenu();
 });
 
 mp.events.add('requestServerStats', () => {
@@ -165,24 +140,134 @@ mp.events.add('requestServerStats', () => {
 });
 
 // ============================================================================
-// TEAM SELECTION UI (Old system - kept for compatibility)
+// KILLFEED
+// ============================================================================
+
+mp.events.add('addKill', (killData) => {
+    console.log('[KILLFEED] New kill:', killData);
+    if (killfeedBrowser) {
+        killfeedBrowser.execute(`addKill(${killData})`);
+    }
+});
+
+mp.events.add('playerDeath', (killerName, victimName, weapon, headshot, distance, killerTeam, victimTeam) => {
+    const killData = {
+        killerName: killerName,
+        killerTeam: killerTeam,
+        victimName: victimName,
+        victimTeam: victimTeam,
+        weapon: weapon,
+        headshot: headshot,
+        distance: distance
+    };
+    
+    if (killfeedBrowser) {
+        killfeedBrowser.execute(`addKill(${JSON.stringify(killData)})`);
+    }
+});
+
+mp.events.add('playerSuicide', (victimName, victimTeam) => {
+    const killData = {
+        victimName: victimName,
+        victimTeam: victimTeam,
+        type: 'suicide'
+    };
+    
+    if (killfeedBrowser) {
+        killfeedBrowser.execute(`addKill(${JSON.stringify(killData)})`);
+    }
+});
+
+mp.events.add('playerTeamkill', (killerName, victimName, weapon, team) => {
+    const killData = {
+        killerName: killerName,
+        killerTeam: team,
+        victimName: victimName,
+        victimTeam: team,
+        weapon: weapon,
+        type: 'teamkill'
+    };
+    
+    if (killfeedBrowser) {
+        killfeedBrowser.execute(`addKill(${JSON.stringify(killData)})`);
+    }
+});
+
+// ============================================================================
+// MINIMAP
+// ============================================================================
+
+let minimapUpdateInterval = null;
+
+function startMinimapUpdates() {
+    if (minimapUpdateInterval) return;
+    
+    console.log('[MINIMAP] Starting updates');
+    
+    minimapUpdateInterval = setInterval(() => {
+        if (!minimapBrowser || !mp.players.local) return;
+        
+        const pos = mp.players.local.position;
+        const heading = mp.players.local.getHeading();
+        
+        const playerData = {
+            position: { x: pos.x, y: pos.y, z: pos.z },
+            heading: heading
+        };
+        
+        minimapBrowser.execute(`updatePlayer(${JSON.stringify(playerData)})`);
+        
+        // Update objectives on minimap
+        if (currentObjectives.length > 0) {
+            minimapBrowser.execute(`updateObjectives(${JSON.stringify(currentObjectives)})`);
+        }
+        
+        // Get nearby players
+        const nearbyPlayers = [];
+        mp.players.forEachInRange(pos, 300, (otherPlayer) => {
+            if (otherPlayer.handle === mp.players.local.handle) return;
+            
+            const otherPos = otherPlayer.position;
+            const otherHeading = otherPlayer.getHeading();
+            const otherTeam = otherPlayer.getVariable('team') || 0;
+            
+            nearbyPlayers.push({
+                x: otherPos.x,
+                y: otherPos.y,
+                team: otherTeam,
+                heading: otherHeading
+            });
+        });
+        
+        if (nearbyPlayers.length > 0) {
+            minimapBrowser.execute(`updateNearbyPlayers(${JSON.stringify(nearbyPlayers)})`);
+        }
+    }, 100); // Update every 100ms
+}
+
+function stopMinimapUpdates() {
+    if (minimapUpdateInterval) {
+        clearInterval(minimapUpdateInterval);
+        minimapUpdateInterval = null;
+        console.log('[MINIMAP] Stopped updates');
+    }
+}
+
+// Start minimap when game starts
+mp.events.add('startGame', () => {
+    startMinimapUpdates();
+});
+
+// ============================================================================
+// TEAM SELECTION UI
 // ============================================================================
 
 function showTeamSelection() {
-    console.log('[CLIENT] Opening team select...');
-    
     if (teamSelectBrowser) return;
-    
-    // Hide HUD
-    if (hudBrowser) {
-        hudBrowser.execute('document.body.style.display = "none";');
-    }
-    
+    if (hudBrowser) hudBrowser.execute('document.body.style.display = "none";');
     teamSelectBrowser = mp.browsers.new('package://cef/team-select.html');
     mp.gui.cursor.show(true, true);
     mp.game.ui.displayRadar(false);
-    
-    console.log('[CLIENT] Team selection opened');
 }
 
 function hideTeamSelection() {
@@ -191,60 +276,37 @@ function hideTeamSelection() {
         teamSelectBrowser = null;
         mp.gui.cursor.show(false, false);
         mp.game.ui.displayRadar(true);
-        
-        // Show HUD
-        if (hudBrowser) {
-            hudBrowser.execute('document.body.style.display = "block";');
-        }
+        if (hudBrowser) hudBrowser.execute('document.body.style.display = "block";');
     }
 }
 
-mp.events.add('showTeamSelect', () => {
-    showTeamSelection();
-});
+mp.events.add('showTeamSelect', showTeamSelection);
 
 // ============================================================================
 // ROLE SELECTION UI
 // ============================================================================
 
 function showRoleSelection() {
-    console.log('[CLIENT] Opening role select...');
-    
-    if (roleSelectBrowser) {
-        roleSelectBrowser.destroy();
-    }
-    
-    // Hide HUD
-    if (hudBrowser) {
-        hudBrowser.execute('document.body.style.display = "none";');
-    }
-    
+    if (roleSelectBrowser) roleSelectBrowser.destroy();
+    if (hudBrowser) hudBrowser.execute('document.body.style.display = "none";');
     roleSelectBrowser = mp.browsers.new('package://cef/role-select.html');
     mp.gui.cursor.show(true, true);
     mp.game.ui.displayRadar(false);
-    
-    console.log('[CLIENT] Role selection opened');
 }
 
 function hideRoleSelection() {
-    console.log('[CLIENT] Hiding role select...');
-    
     if (roleSelectBrowser) {
         roleSelectBrowser.destroy();
         roleSelectBrowser = null;
     }
-    
     mp.gui.cursor.show(false, false);
     mp.game.ui.displayRadar(true);
     mp.gui.chat.show(true);
+    if (hudBrowser) hudBrowser.execute('document.body.style.display = "block";');
+    if (captureBarBrowser) captureBarBrowser.execute('document.body.style.display = "block";');
     
-    // Show HUD
-    if (hudBrowser) {
-        hudBrowser.execute('document.body.style.display = "block";');
-    }
-    if (captureBarBrowser) {
-        captureBarBrowser.execute('document.body.style.display = "block";');
-    }
+    // Start minimap updates after role selection
+    startMinimapUpdates();
 }
 
 mp.events.add('showRoleSelect', () => {
@@ -260,23 +322,17 @@ mp.events.add('hideAllMenus', () => {
 });
 
 // ============================================================================
-// EVENTS FROM CEF (Browser)
+// EVENTS FROM CEF
 // ============================================================================
 
-// From team-select.html
 mp.events.add('cef:selectTeam', (teamId) => {
-    console.log('[CEF] Team selected:', teamId);
-    
     mp.events.callRemote('selectTeam', parseInt(teamId));
     gameState.team = parseInt(teamId);
     hideTeamSelection();
     showRoleSelection();
 });
 
-// From role-select.html
 mp.events.add('cef:selectRole', (roleName) => {
-    console.log('[CEF] Role selected:', roleName);
-    
     mp.events.callRemote('selectRole', roleName);
     gameState.role = roleName;
     hideRoleSelection();
@@ -293,40 +349,28 @@ mp.events.add('cef:requestRespawn', () => {
 mp.events.add('updateGameState', (data) => {
     try {
         gameState = JSON.parse(data);
-        if (hudBrowser) {
-            hudBrowser.execute(`updateHUD(${data});`);
-        }
+        if (hudBrowser) hudBrowser.execute(`updateHUD(${data});`);
     } catch (e) {
         console.error('[CLIENT] Error updating game state:', e);
     }
 });
 
 mp.events.add('showNotification', (message, type) => {
-    if (hudBrowser) {
-        hudBrowser.execute(`showNotification('${message}', '${type}');`);
-    }
+    if (hudBrowser) hudBrowser.execute(`showNotification('${message}', '${type}');`);
     console.log(`[NOTIFICATION] ${message}`);
 });
 
 mp.events.add('updateObjectives', (objectivesData) => {
     try {
         gameState.objectives = JSON.parse(objectivesData);
-        if (hudBrowser) {
-            hudBrowser.execute(`updateObjectives(${objectivesData});`);
-        }
+        if (hudBrowser) hudBrowser.execute(`updateObjectives(${objectivesData});`);
     } catch (e) {
         console.error('[CLIENT] Error updating objectives:', e);
     }
 });
 
-// ============================================================================
-// CAPTURE BAR UI
-// ============================================================================
-
 mp.events.add('updateCaptureProgress', (data) => {
-    if (captureBarBrowser) {
-        captureBarBrowser.execute(`updateCaptureProgress(${data});`);
-    }
+    if (captureBarBrowser) captureBarBrowser.execute(`updateCaptureProgress(${data});`);
 });
 
 // ============================================================================
@@ -338,17 +382,13 @@ let currentObjectives = [];
 let lastCaptureUpdate = 0;
 
 function createObjectiveMarkers(objectives) {
-    // Clear old blips
     objectiveBlips.forEach(blip => {
-        if (blip && mp.blips.exists(blip)) {
-            blip.destroy();
-        }
+        if (blip && mp.blips.exists(blip)) blip.destroy();
     });
     objectiveBlips = [];
-    
     currentObjectives = objectives;
     
-    objectives.forEach((obj, index) => {
+    objectives.forEach((obj) => {
         const blip = mp.blips.new(84, new mp.Vector3(obj.x, obj.y, obj.z), {
             name: obj.name,
             color: obj.capturedBy === 1 ? 3 : (obj.capturedBy === 2 ? 1 : 5),
@@ -360,11 +400,9 @@ function createObjectiveMarkers(objectives) {
 }
 
 mp.events.add('createObjectiveMarkers', (data) => {
-    const objectives = JSON.parse(data);
-    createObjectiveMarkers(objectives);
+    createObjectiveMarkers(JSON.parse(data));
 });
 
-// Draw objective markers
 mp.events.add('render', () => {
     const playerPos = mp.players.local.position;
     
@@ -373,23 +411,18 @@ mp.events.add('render', () => {
                      (obj.capturedBy === 2 ? [255, 50, 50, 100] : [255, 200, 0, 100]);
         
         mp.game.graphics.drawMarker(
-            1, // Cylinder
-            obj.x, obj.y, obj.z - 1,
-            0, 0, 0,
-            0, 0, 0,
+            1, obj.x, obj.y, obj.z - 1, 0, 0, 0, 0, 0, 0,
             obj.radius * 2, obj.radius * 2, 2.0,
             color[0], color[1], color[2], color[3],
             false, true, 2, false, null, null, false
         );
         
-        const objPos = new mp.Vector3(obj.x, obj.y, obj.z);
-        const dist = playerPos.subtract(objPos).length();
+        const dist = playerPos.subtract(new mp.Vector3(obj.x, obj.y, obj.z)).length();
         
         if (dist < obj.radius) {
             const now = Date.now();
             if (now - lastCaptureUpdate > 200) {
                 lastCaptureUpdate = now;
-                
                 const captureData = {
                     name: obj.name,
                     progress: obj.captureProgress || 0,
@@ -398,49 +431,12 @@ mp.events.add('render', () => {
                     team2Players: obj.playersInRadius ? obj.playersInRadius[2] : 0,
                     isCapturing: true
                 };
-                
                 if (captureBarBrowser) {
-                    captureBarBrowser.execute(`updateCaptureProgress(${JSON.stringify(captureData)});`);
+                    captureBarBrowser.execute(`updateCaptureProgress(${JSON.stringify(captureData)})`);
                 }
             }
         }
     });
-});
-
-// ============================================================================
-// RALLY POINT MARKERS
-// ============================================================================
-
-let rallyBlip = null;
-
-mp.events.add('showRallyPoint', (x, y, z) => {
-    if (rallyBlip && mp.blips.exists(rallyBlip)) {
-        rallyBlip.destroy();
-    }
-    
-    rallyBlip = mp.blips.new(398, new mp.Vector3(x, y, z), {
-        name: 'Rally Point',
-        color: 2,
-        scale: 0.8,
-        shortRange: true
-    });
-});
-
-// ============================================================================
-// FOB VISUALIZATION
-// ============================================================================
-
-let fobBlips = [];
-
-mp.events.add('createFOB', (x, y, z, teamId) => {
-    const blip = mp.blips.new(473, new mp.Vector3(x, y, z), {
-        name: 'FOB',
-        color: teamId === 1 ? 3 : 1,
-        scale: 1.0,
-        shortRange: false
-    });
-    
-    fobBlips.push(blip);
 });
 
 // ============================================================================
@@ -465,13 +461,11 @@ mp.keys.bind(0x42, true, () => { // B key
     }
 });
 
-// ESC to close menus - WITH MODE CHECK
 mp.keys.bind(0x1B, true, () => { // ESC
     if (mainMenuBrowser) {
         if (modeSelected) {
             hideMainMenu();
         } else {
-            console.log('[CLIENT] Cannot close - select a mode first!');
             mp.gui.chat.push('!{FF0000}Select a game mode first!');
         }
     } else if (roleSelectBrowser) {
@@ -481,16 +475,10 @@ mp.keys.bind(0x1B, true, () => { // ESC
     }
 });
 
-// ============================================================================
-// MANUAL CURSOR TOGGLE FOR DEBUGGING
-// ============================================================================
-
-mp.keys.bind(0x46, true, () => { // F key - Force show cursor
+mp.keys.bind(0x46, true, () => { // F key - Debug cursor
     mp.gui.cursor.show(true, true);
-    console.log('[DEBUG] Cursor force shown with F key');
     mp.gui.chat.push('Cursor shown!');
 });
 
-console.log('[CLIENT] Battle Arena client loaded!');
-console.log('[CLIENT] Main menu will auto-open with cursor');
-console.log('[CLIENT] Press F to force show cursor if needed');
+console.log('[CLIENT] Battle Arena v2.5 loaded!');
+console.log('[CLIENT] ✅ Killfeed & Minimap active');
