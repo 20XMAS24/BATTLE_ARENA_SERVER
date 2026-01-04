@@ -1,0 +1,360 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+    background: transparent;
+}
+
+.hud-container {
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+}
+
+/* ========== TEAM SCORES ========== */
+.team-scores {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 40px;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 15px 30px;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+}
+
+.team-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.team-score.team-1 {
+    color: #0088ff;
+}
+
+.team-score.team-2 {
+    color: #ff4444;
+}
+
+.team-name {
+    font-size: 14px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.score {
+    font-size: 32px;
+    font-weight: bold;
+    text-shadow: 0 0 10px currentColor;
+}
+
+.match-timer {
+    font-size: 24px;
+    color: #ffffff;
+    font-weight: bold;
+    padding: 0 20px;
+}
+
+/* ========== PLAYER INFO ========== */
+.player-info {
+    position: absolute;
+    bottom: 120px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 15px;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+}
+
+.player-stats {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 10px;
+}
+
+.stat {
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.role-indicator {
+    text-align: center;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    color: #00ff88;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+/* ========== OBJECTIVES PANEL ========== */
+.objectives-panel {
+    position: absolute;
+    top: 100px;
+    right: -350px;
+    width: 320px;
+    max-height: 600px;
+    background: rgba(0, 0, 0, 0.85);
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    transition: right 0.3s ease;
+    pointer-events: all;
+    overflow: hidden;
+}
+
+.objectives-panel.active {
+    right: 20px;
+}
+
+.panel-header {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #00ff88;
+}
+
+.panel-header h3 {
+    color: #00ff88;
+    font-size: 18px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 24px;
+    cursor: pointer;
+    pointer-events: all;
+}
+
+.objectives-list {
+    padding: 15px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.objective-item {
+    padding: 12px;
+    margin-bottom: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border-left: 4px solid #ffaa00;
+}
+
+.objective-item.captured-team1 {
+    border-left-color: #0088ff;
+}
+
+.objective-item.captured-team2 {
+    border-left-color: #ff4444;
+}
+
+.objective-name {
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.objective-status {
+    color: #aaaaaa;
+    font-size: 14px;
+}
+
+.objective-progress {
+    margin-top: 8px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #00ff88, #00ccff);
+    transition: width 0.3s ease;
+}
+
+/* ========== SQUAD PANEL ========== */
+.squad-panel {
+    position: absolute;
+    top: 100px;
+    left: -350px;
+    width: 320px;
+    background: rgba(0, 0, 0, 0.85);
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    transition: left 0.3s ease;
+    pointer-events: all;
+}
+
+.squad-panel.active {
+    left: 20px;
+}
+
+.squad-members {
+    padding: 15px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.member-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    margin-bottom: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.member-item.leader {
+    background: rgba(255, 215, 0, 0.2);
+    border: 1px solid #ffd700;
+}
+
+.member-name {
+    color: #ffffff;
+    font-weight: bold;
+    flex: 1;
+}
+
+.member-role {
+    color: #00ff88;
+    font-size: 12px;
+}
+
+.squad-actions {
+    padding: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rally-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #00ff88, #00ccff);
+    border: none;
+    border-radius: 6px;
+    color: #000;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: transform 0.2s;
+}
+
+.rally-btn:hover {
+    transform: scale(1.05);
+}
+
+/* ========== NOTIFICATIONS ========== */
+.notifications {
+    position: absolute;
+    top: 150px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.notification {
+    padding: 15px 20px;
+    background: rgba(0, 0, 0, 0.9);
+    border-radius: 8px;
+    color: #ffffff;
+    font-weight: bold;
+    text-align: center;
+    animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s;
+    border-left: 4px solid #00ff88;
+}
+
+.notification.success {
+    border-left-color: #00ff88;
+}
+
+.notification.error {
+    border-left-color: #ff4444;
+}
+
+.notification.warning {
+    border-left-color: #ffaa00;
+}
+
+.notification.info {
+    border-left-color: #0088ff;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+/* ========== MINIMAP OVERLAY ========== */
+.minimap-overlay {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    width: 250px;
+    height: 250px;
+    pointer-events: none;
+}
+
+.objective-indicators {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+/* ========== SCROLLBAR ========== */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
