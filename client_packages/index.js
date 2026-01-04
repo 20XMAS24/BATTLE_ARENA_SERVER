@@ -1,319 +1,502 @@
 // ============================================================================
-// BATTLE ARENA - Client Side Main
-// Визуальная система, GUI, маркеры
+// BATTLE ARENA - Client Side
+// Visual battle zone, UI, 3D objects
 // ============================================================================
 
 let playerTeam = null;
 let playerRole = null;
-let playerSquad = null;
-let hudBrowser = null;
-let menuBrowser = null;
-let showingMenu = false;
+let isInMatch = false;
+let uiBrowser = null;
 
 // ============================================================================
-// ИНИЦИАЛИЗАЦИЯ
+// UI BROWSER INITIALIZATION
 // ============================================================================
 
 mp.events.add('playerReady', () => {
-    console.log('[CLIENT] Player ready, initializing UI...');
+    // Create UI browser
+    uiBrowser = mp.browsers.new('package://ui/index.html');
     
-    // Создаём HUD
-    createHUD();
+    // Show cursor for UI
+    mp.gui.cursor.show(true, true);
     
-    // Показываем меню выбора команды
     setTimeout(() => {
-        showTeamSelectionMenu();
-    }, 1000);
-    
-    // Инициализируем маркеры
-    initializeMarkers();
+        mp.gui.cursor.show(false, false);
+    }, 5000);
 });
 
 // ============================================================================
-// HUD СИСТЕМА
+// TEAM SELECTION UI
 // ============================================================================
 
-function createHUD() {
-    if (hudBrowser) return;
-    
-    hudBrowser = mp.browsers.new('package://cef/hud.html');
-    
-    console.log('[CLIENT] HUD created');
-}
+mp.events.add('showTeamSelection', () => {
+    if (uiBrowser) {
+        uiBrowser.execute(`showTeamSelection();`);
+        mp.gui.cursor.show(true, true);
+    }
+});
 
-function updateHUD(data) {
-    if (!hudBrowser) return;
+mp.events.addProc('selectTeam', (teamId) => {
+    playerTeam = teamId;
+    mp.events.callRemote('client:selectTeam', teamId);
     
-    hudBrowser.execute(`updateHUD(${JSON.stringify(data)})`);
-}
+    // Hide team selection, show role selection
+    if (uiBrowser) {
+        uiBrowser.execute(`showRoleSelection(${teamId});`);
+    }
+});
 
-// Обновление HUD каждую секунду
+// ============================================================================
+// ROLE SELECTION UI
+// ============================================================================
+
+mp.events.addProc('selectRole', (roleName) => {
+    playerRole = roleName;
+    mp.events.callRemote('client:selectRole', roleName);
+    
+    // Hide UI
+    if (uiBrowser) {
+        uiBrowser.execute(`hideUI();`);
+        mp.gui.cursor.show(false, false);
+    }
+    
+    // Show notification
+    showNotification(`Role: ${roleName}`, 'success');
+});
+
+// ============================================================================
+// HUD SYSTEM
+// ============================================================================
+
+mp.events.add('updateHUD', (data) => {
+    if (uiBrowser) {
+        uiBrowser.execute(`updateHUD(${JSON.stringify(data)});`);
+    }
+});
+
+// Update HUD every second
 setInterval(() => {
-    if (playerTeam && mp.players.local) {
-        const data = {
-            health: mp.players.local.getHealth(),
-            armor: mp.players.local.getArmour(),
+    if (isInMatch && uiBrowser) {
+        const hudData = {
             team: playerTeam,
             role: playerRole,
-            squad: playerSquad
+            health: mp.players.local.getHealth(),
+            armor: mp.players.local.getArmour(),
+            ammo: getPlayerAmmo(),
+            squadMembers: getSquadMembers(),
+            objectives: getObjectivesStatus()
         };
-        updateHUD(data);
+        
+        uiBrowser.execute(`updateHUD(${JSON.stringify(hudData)});`);
     }
 }, 1000);
 
 // ============================================================================
-// МЕНЮ ВЫБОРА КОМАНДЫ
-// ============================================================================
-
-function showTeamSelectionMenu() {
-    if (menuBrowser) {
-        menuBrowser.destroy();
-    }
-    
-    menuBrowser = mp.browsers.new('package://cef/team_menu.html');
-    
-    mp.gui.cursor.show(true, true);
-    mp.players.local.freezePosition(true);
-    showingMenu = true;
-    
-    console.log('[CLIENT] Team selection menu shown');
-}
-
-function hideMenu() {
-    if (menuBrowser) {
-        menuBrowser.destroy();
-        menuBrowser = null;
-    }
-    
-    mp.gui.cursor.show(false, false);
-    mp.players.local.freezePosition(false);
-    showingMenu = false;
-}
-
-// ============================================================================
-// СОБЫТИЯ ИЗ CEF (Web UI)
-// ============================================================================
-
-mp.events.add('selectTeam', (teamId) => {
-    console.log('[CLIENT] Selected team:', teamId);
-    playerTeam = teamId;
-    
-    // Отправляем на сервер
-    mp.events.callRemote('client:selectTeam', teamId);
-    
-    // Показываем меню выбора роли
-    showRoleSelectionMenu();
-});
-
-mp.events.add('selectRole', (roleName) => {
-    console.log('[CLIENT] Selected role:', roleName);
-    playerRole = roleName;
-    
-    // Отправляем на сервер
-    mp.events.callRemote('client:selectRole', roleName);
-    
-    // Закрываем меню
-    hideMenu();
-    
-    // Показываем уведомление
-    showNotification(`Вы присоединились к команде ${playerTeam} как ${roleName}`, 'success');
-});
-
-// ============================================================================
-// МЕНЮ ВЫБОРА РОЛИ
-// ============================================================================
-
-function showRoleSelectionMenu() {
-    if (menuBrowser) {
-        menuBrowser.destroy();
-    }
-    
-    menuBrowser = mp.browsers.new('package://cef/role_menu.html');
-    
-    console.log('[CLIENT] Role selection menu shown');
-}
-
-// ============================================================================
-// СИСТЕМА МАРКЕРОВ
-// ============================================================================
-
-let objectiveMarkers = [];
-let fobMarkers = [];
-let playerMarkers = new Map();
-
-function initializeMarkers() {
-    console.log('[CLIENT] Markers system initialized');
-}
-
-// Создание маркера для объектива
-mp.events.add('createObjectiveMarker', (objId, name, x, y, z, team) => {
-    const blip = mp.blips.new(1, new mp.Vector3(x, y, z), {
-        name: name,
-        color: team === 1 ? 38 : 1, // Синий или красный
-        alpha: 255,
-        scale: 1.0,
-        shortRange: false
-    });
-    
-    objectiveMarkers.push({ id: objId, blip: blip });
-    
-    console.log(`[CLIENT] Created objective marker: ${name}`);
-});
-
-// Обновление маркера объектива
-mp.events.add('updateObjectiveMarker', (objId, team) => {
-    const marker = objectiveMarkers.find(m => m.id === objId);
-    if (marker) {
-        marker.blip.setColour(team === 1 ? 38 : team === 2 ? 1 : 47); // Синий/Красный/Нейтральный
-    }
-});
-
-// Создание маркера FOB
-mp.events.add('createFOBMarker', (fobId, x, y, z, team) => {
-    const blip = mp.blips.new(564, new mp.Vector3(x, y, z), {
-        name: 'FOB',
-        color: team === 1 ? 38 : 1,
-        alpha: 255,
-        scale: 0.8,
-        shortRange: false
-    });
-    
-    fobMarkers.push({ id: fobId, blip: blip });
-    
-    console.log(`[CLIENT] Created FOB marker`);
-});
-
-// ============================================================================
-// СИСТЕМА УВЕДОМЛЕНИЙ
+// NOTIFICATION SYSTEM
 // ============================================================================
 
 function showNotification(message, type = 'info') {
-    if (!hudBrowser) return;
-    
-    hudBrowser.execute(`showNotification('${message}', '${type}')`);
+    if (uiBrowser) {
+        uiBrowser.execute(`showNotification('${message}', '${type}');`);
+    }
 }
 
-mp.events.add('showNotification', (message, type) => {
-    showNotification(message, type);
-});
+mp.events.add('showNotification', showNotification);
 
 // ============================================================================
-// 3D ТЕКСТ НАД ОБЪЕКТИВАМИ
+// OBJECTIVE MARKERS (3D)
 // ============================================================================
 
-let textLabels = [];
+let objectiveMarkers = [];
+let objectiveBlips = [];
 
-mp.events.add('createObjectiveLabel', (x, y, z, text) => {
-    const label = mp.labels.new(text, new mp.Vector3(x, y, z + 5), {
-        los: true,
-        font: 4,
-        drawDistance: 100.0,
-        color: [255, 255, 255, 255]
+mp.events.add('createObjective', (objData) => {
+    const { id, name, x, y, z, capturedBy } = objData;
+    
+    // Create 3D marker
+    const marker = mp.markers.new(
+        1, // Cylinder marker
+        new mp.Vector3(x, y, z - 1),
+        100, // radius
+        {
+            color: getTeamColor(capturedBy),
+            visible: true,
+            dimension: 0
+        }
+    );
+    
+    objectiveMarkers.push({ id, marker });
+    
+    // Create blip on map
+    const blip = mp.blips.new(1, new mp.Vector3(x, y, z), {
+        name: name,
+        color: getBlipColor(capturedBy),
+        scale: 1.5,
+        shortRange: false
     });
     
-    textLabels.push(label);
+    objectiveBlips.push({ id, blip });
 });
 
-// ============================================================================
-// КЛАВИШИ
-// ============================================================================
-
-mp.keys.bind(0x4D, true, () => { // M - Map
-    if (!showingMenu) {
-        showMap();
-    }
-});
-
-mp.keys.bind(0x09, true, () => { // TAB - Scoreboard
-    if (!showingMenu) {
-        showScoreboard();
-    }
-});
-
-mp.keys.bind(0x54, true, () => { // T - Team menu
-    if (!showingMenu && playerTeam) {
-        showTeamChat();
-    }
-});
-
-function showMap() {
-    console.log('[CLIENT] Opening map...');
-    // TODO: Implement map UI
-}
-
-function showScoreboard() {
-    console.log('[CLIENT] Opening scoreboard...');
-    // TODO: Implement scoreboard
-}
-
-function showTeamChat() {
-    console.log('[CLIENT] Opening team chat...');
-    // TODO: Implement team chat
-}
-
-// ============================================================================
-// СОБЫТИЯ С СЕРВЕРА
-// ============================================================================
-
-mp.events.add('server:matchStarted', () => {
-    showNotification('⚔️ МАТЧ НАЧАЛСЯ! Захватывайте объективы!', 'success');
-});
-
-mp.events.add('server:matchEnded', (winnerTeam) => {
-    showNotification(`🏆 МАТЧ ЗАВЕРШЁН! Победила команда ${winnerTeam}`, 'success');
-});
-
-mp.events.add('server:objectiveCaptured', (objName, teamName) => {
-    showNotification(`📍 ${objName} захвачен командой ${teamName}!`, 'warning');
-});
-
-mp.events.add('server:playerKilled', (killerName, victimName) => {
-    if (victimName === mp.players.local.name) {
-        showNotification(`☠️ Вас убил ${killerName}`, 'error');
-    }
-});
-
-// ============================================================================
-// КАМЕРА СПАВНА
-// ============================================================================
-
-let spawnCamera = null;
-
-mp.events.add('startSpawnCamera', (x, y, z) => {
-    if (spawnCamera) {
-        spawnCamera.destroy();
+mp.events.add('updateObjective', (id, capturedBy) => {
+    const marker = objectiveMarkers.find(m => m.id === id);
+    if (marker) {
+        marker.marker.setColor(getTeamColor(capturedBy));
     }
     
-    spawnCamera = mp.cameras.new('default', new mp.Vector3(x, y, z + 50), new mp.Vector3(-20, 0, 0), 60);
-    spawnCamera.pointAtCoord(x, y, z);
-    spawnCamera.setActive(true);
-    
-    mp.game.cam.renderScriptCams(true, false, 0, true, false);
+    const blip = objectiveBlips.find(b => b.id === id);
+    if (blip) {
+        blip.blip.setColor(getBlipColor(capturedBy));
+    }
 });
 
-mp.events.add('stopSpawnCamera', () => {
-    if (spawnCamera) {
-        spawnCamera.setActive(false);
-        mp.game.cam.renderScriptCams(false, false, 0, true, false);
-        spawnCamera.destroy();
-        spawnCamera = null;
+function getTeamColor(teamId) {
+    if (!teamId) return [255, 255, 255, 100]; // Neutral - white
+    return teamId === 1 ? [0, 100, 255, 100] : [255, 50, 50, 100]; // Blue : Red
+}
+
+function getBlipColor(teamId) {
+    if (!teamId) return 0; // White
+    return teamId === 1 ? 3 : 1; // Blue : Red
+}
+
+// ============================================================================
+// FOB SYSTEM (3D Objects)
+// ============================================================================
+
+let fobObjects = [];
+
+mp.events.add('createFOB', (fobData) => {
+    const { id, x, y, z, teamId, buildProgress } = fobData;
+    
+    // Create FOB tent object
+    const tent = mp.objects.new(
+        mp.game.joaat('prop_gazebo_02'), // Tent model
+        new mp.Vector3(x, y, z),
+        {
+            rotation: new mp.Vector3(0, 0, 0),
+            alpha: 255,
+            dimension: 0
+        }
+    );
+    
+    // Create sandbag barriers
+    const barriers = [];
+    for (let i = 0; i < 4; i++) {
+        const angle = (Math.PI / 2) * i;
+        const barrierX = x + Math.cos(angle) * 5;
+        const barrierY = y + Math.sin(angle) * 5;
+        
+        const barrier = mp.objects.new(
+            mp.game.joaat('prop_barrier_work05'),
+            new mp.Vector3(barrierX, barrierY, z),
+            {
+                rotation: new mp.Vector3(0, 0, angle * (180 / Math.PI)),
+                alpha: 255,
+                dimension: 0
+            }
+        );
+        barriers.push(barrier);
+    }
+    
+    // Create flag
+    const flagModel = teamId === 1 ? 'prop_flag_us' : 'prop_flag_russia';
+    const flag = mp.objects.new(
+        mp.game.joaat(flagModel),
+        new mp.Vector3(x, y, z + 2),
+        {
+            rotation: new mp.Vector3(0, 0, 0),
+            alpha: 255,
+            dimension: 0
+        }
+    );
+    
+    // Create marker
+    const marker = mp.markers.new(
+        1,
+        new mp.Vector3(x, y, z - 1),
+        20,
+        {
+            color: getTeamColor(teamId),
+            visible: true,
+            dimension: 0
+        }
+    );
+    
+    fobObjects.push({ id, tent, barriers, flag, marker });
+    
+    showNotification(`FOB created by Team ${teamId}`, 'info');
+});
+
+mp.events.add('destroyFOB', (id) => {
+    const fob = fobObjects.find(f => f.id === id);
+    if (fob) {
+        fob.tent.destroy();
+        fob.barriers.forEach(b => b.destroy());
+        fob.flag.destroy();
+        fob.marker.destroy();
+        
+        fobObjects = fobObjects.filter(f => f.id !== id);
+        showNotification('FOB destroyed!', 'warning');
     }
 });
 
 // ============================================================================
-// DEBUG
+// RALLY POINT SYSTEM
 // ============================================================================
+
+let rallyPoints = [];
+
+mp.events.add('createRallyPoint', (data) => {
+    const { squadId, x, y, z } = data;
+    
+    // Create smoke effect
+    mp.game.graphics.startParticleFxNonLoopedAtCoord(
+        'scr_rcbarry1',
+        'scr_alien_teleport',
+        x, y, z,
+        0, 0, 0,
+        1.0,
+        false, false, false
+    );
+    
+    // Create marker
+    const marker = mp.markers.new(
+        0, // Arrow down
+        new mp.Vector3(x, y, z + 5),
+        2,
+        {
+            color: [0, 255, 0, 200],
+            visible: true,
+            dimension: 0
+        }
+    );
+    
+    // Create blip
+    const blip = mp.blips.new(1, new mp.Vector3(x, y, z), {
+        name: `Rally Point - Squad ${squadId}`,
+        color: 2, // Green
+        scale: 0.8,
+        shortRange: true
+    });
+    
+    rallyPoints.push({ squadId, marker, blip });
+    
+    showNotification('Rally Point set!', 'success');
+});
+
+// ============================================================================
+// COMBAT ZONE VISUALIZATION
+// ============================================================================
+
+// Create combat zone boundaries
+mp.events.add('createCombatZone', (zoneData) => {
+    const { x, y, z, radius } = zoneData;
+    
+    // Create boundary marker (red circle)
+    const boundary = mp.markers.new(
+        28, // Race tube
+        new mp.Vector3(x, y, z - 1),
+        radius,
+        {
+            color: [255, 0, 0, 50],
+            visible: true,
+            dimension: 0
+        }
+    );
+    
+    // Warning for players outside zone
+    setInterval(() => {
+        const playerPos = mp.players.local.position;
+        const distance = Math.sqrt(
+            Math.pow(playerPos.x - x, 2) + 
+            Math.pow(playerPos.y - y, 2)
+        );
+        
+        if (distance > radius) {
+            showNotification('You are outside combat zone!', 'danger');
+            
+            // Damage player
+            const health = mp.players.local.getHealth();
+            mp.players.local.setHealth(health - 5);
+        }
+    }, 2000);
+});
+
+// ============================================================================
+// SQUAD MEMBER INDICATORS
+// ============================================================================
+
+let squadMarkers = new Map();
 
 mp.events.add('render', () => {
-    // Отрисовка дебаг информации
-    if (playerTeam && playerRole) {
-        mp.game.graphics.drawText(`Team: ${playerTeam} | Role: ${playerRole}`, [0.5, 0.95], {
-            font: 4,
-            color: [255, 255, 255, 255],
-            scale: [0.4, 0.4],
-            outline: true
-        });
+    if (!isInMatch) return;
+    
+    // Draw squad member names above heads
+    mp.players.forEach((player) => {
+        if (player === mp.players.local) return;
+        
+        const playerPos = player.position;
+        const screenPos = mp.game.graphics.world3dToScreen2d(playerPos.x, playerPos.y, playerPos.z + 1);
+        
+        if (screenPos && player.squad === mp.players.local.squad) {
+            // Draw green name tag for squad members
+            mp.game.graphics.drawText(
+                player.name,
+                [screenPos.x, screenPos.y],
+                {
+                    font: 4,
+                    color: [0, 255, 0, 255],
+                    scale: [0.4, 0.4],
+                    outline: true
+                }
+            );
+            
+            // Draw health bar
+            const health = player.getHealth() / 100;
+            drawHealthBar(screenPos.x, screenPos.y + 0.02, health);
+        }
+    });
+});
+
+function drawHealthBar(x, y, healthPercent) {
+    const width = 0.05;
+    const height = 0.005;
+    
+    // Background (red)
+    mp.game.graphics.drawRect(x, y, width, height, 255, 0, 0, 150, 0);
+    
+    // Foreground (green)
+    mp.game.graphics.drawRect(
+        x - (width / 2) + (width * healthPercent / 2),
+        y,
+        width * healthPercent,
+        height,
+        0, 255, 0, 200,
+        0
+    );
+}
+
+// ============================================================================
+// MATCH EVENTS
+// ============================================================================
+
+mp.events.add('matchStarted', (data) => {
+    isInMatch = true;
+    showNotification('Match Started! Capture objectives!', 'success');
+    
+    // Play sound
+    mp.game.audio.playSoundFrontend(-1, 'RACE_PLACED', 'HUD_AWARDS', true);
+    
+    // Create objectives
+    data.objectives.forEach(obj => {
+        mp.events.call('createObjective', obj);
+    });
+    
+    // Show HUD
+    if (uiBrowser) {
+        uiBrowser.execute(`showHUD();`);
     }
 });
 
-console.log('[CLIENT] Battle Arena client initialized');
+mp.events.add('matchEnded', (data) => {
+    isInMatch = false;
+    showNotification(`Match Ended! Winner: Team ${data.winner}`, 'info');
+    
+    // Play sound
+    mp.game.audio.playSoundFrontend(-1, 'CHECKPOINT_PERFECT', 'HUD_MINI_GAME_SOUNDSET', true);
+    
+    // Hide HUD
+    if (uiBrowser) {
+        uiBrowser.execute(`hideHUD();`);
+    }
+    
+    // Clear objects
+    clearAllObjects();
+});
+
+mp.events.add('objectiveCaptured', (data) => {
+    const { objectiveName, teamId } = data;
+    
+    showNotification(`${objectiveName} captured by Team ${teamId}!`, 'warning');
+    mp.game.audio.playSoundFrontend(-1, 'MEDAL_BRONZE', 'HUD_AWARDS', true);
+    
+    // Update objective
+    mp.events.call('updateObjective', data.id, teamId);
+});
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+function getPlayerAmmo() {
+    const weapon = mp.players.local.weapon;
+    return mp.game.invoke('0x015A522136D7F951', mp.players.local.handle, weapon);
+}
+
+function getSquadMembers() {
+    // Will be populated from server
+    return [];
+}
+
+function getObjectivesStatus() {
+    // Will be populated from server
+    return [];
+}
+
+function clearAllObjects() {
+    objectiveMarkers.forEach(m => m.marker.destroy());
+    objectiveBlips.forEach(b => b.blip.destroy());
+    fobObjects.forEach(f => {
+        f.tent.destroy();
+        f.barriers.forEach(b => b.destroy());
+        f.flag.destroy();
+        f.marker.destroy();
+    });
+    rallyPoints.forEach(r => {
+        r.marker.destroy();
+        r.blip.destroy();
+    });
+    
+    objectiveMarkers = [];
+    objectiveBlips = [];
+    fobObjects = [];
+    rallyPoints = [];
+}
+
+// ============================================================================
+// KEY BINDINGS
+// ============================================================================
+
+// F1 - Toggle team/role menu
+mp.keys.bind(0x70, true, () => {
+    if (!isInMatch && uiBrowser) {
+        uiBrowser.execute(`toggleMenu();`);
+        mp.gui.cursor.show(true, true);
+    }
+});
+
+// F2 - Squad menu
+mp.keys.bind(0x71, true, () => {
+    if (isInMatch && uiBrowser) {
+        uiBrowser.execute(`toggleSquadMenu();`);
+        mp.gui.cursor.show(true, true);
+    }
+});
+
+// F3 - Objectives map
+mp.keys.bind(0x72, true, () => {
+    if (isInMatch && uiBrowser) {
+        uiBrowser.execute(`toggleObjectivesMap();`);
+        mp.gui.cursor.show(true, true);
+    }
+});
+
+// ESC - Close UI
+mp.keys.bind(0x1B, true, () => {
+    if (uiBrowser) {
+        uiBrowser.execute(`closeAllUI();`);
+        mp.gui.cursor.show(false, false);
+    }
+});
+
+console.log('[CLIENT] Battle Arena client loaded');
