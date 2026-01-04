@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle HUD</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: transparent;
+            overflow: hidden;
+        }
+
+        .vehicle-hud {
+            position: fixed;
+            bottom: 150px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            min-width: 280px;
+        }
+
+        .vehicle-name {
+            color: #00ff88;
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        .stat-bar {
+            margin-bottom: 12px;
+        }
+
+        .stat-label {
+            color: #aaaaaa;
+            font-size: 12px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stat-value {
+            color: #ffffff;
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            transition: width 0.3s ease, background 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .health-fill {
+            background: linear-gradient(90deg, #ff4444, #ff6666);
+        }
+
+        .health-fill.good {
+            background: linear-gradient(90deg, #00ff88, #00ccaa);
+        }
+
+        .health-fill.medium {
+            background: linear-gradient(90deg, #ffaa00, #ffcc00);
+        }
+
+        .fuel-fill {
+            background: linear-gradient(90deg, #0088ff, #00aaff);
+        }
+
+        .fuel-fill.low {
+            background: linear-gradient(90deg, #ff4444, #ff6666);
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .vehicle-info {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-around;
+            font-size: 11px;
+            color: #888888;
+        }
+
+        .info-item {
+            text-align: center;
+        }
+
+        .info-value {
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 14px;
+            display: block;
+            margin-bottom: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="vehicle-hud" id="vehicle-hud">
+        <div class="vehicle-name" id="vehicle-name">VEHICLE</div>
+        
+        <div class="stat-bar">
+            <div class="stat-label">
+                <span>❤️ Health</span>
+                <span class="stat-value" id="health-value">100%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill health-fill good" id="health-bar" style="width: 100%"></div>
+            </div>
+        </div>
+
+        <div class="stat-bar">
+            <div class="stat-label">
+                <span>⛽ Fuel</span>
+                <span class="stat-value" id="fuel-value">100%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill fuel-fill" id="fuel-bar" style="width: 100%"></div>
+            </div>
+        </div>
+
+        <div class="vehicle-info">
+            <div class="info-item">
+                <span class="info-value" id="speed">0</span>
+                <span>km/h</span>
+            </div>
+            <div class="info-item">
+                <span class="info-value" id="occupants">1/4</span>
+                <span>SEATS</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showVehicleHUD(data) {
+            const hud = document.getElementById('vehicle-hud');
+            hud.style.display = 'block';
+            
+            document.getElementById('vehicle-name').textContent = data.name;
+            updateVehicleHealth(data.health, data.maxHealth);
+            updateVehicleFuel(data.fuel, data.maxFuel);
+        }
+
+        function hideVehicleHUD() {
+            document.getElementById('vehicle-hud').style.display = 'none';
+        }
+
+        function updateVehicleHealth(health, maxHealth) {
+            const percent = (health / maxHealth) * 100;
+            const bar = document.getElementById('health-bar');
+            const value = document.getElementById('health-value');
+            
+            bar.style.width = percent + '%';
+            value.textContent = Math.round(percent) + '%';
+            
+            bar.className = 'progress-fill health-fill';
+            if (percent > 70) {
+                bar.classList.add('good');
+            } else if (percent > 30) {
+                bar.classList.add('medium');
+            }
+        }
+
+        function updateVehicleFuel(fuel, maxFuel) {
+            const percent = (fuel / maxFuel) * 100;
+            const bar = document.getElementById('fuel-bar');
+            const value = document.getElementById('fuel-value');
+            
+            bar.style.width = percent + '%';
+            value.textContent = Math.round(percent) + '%';
+            
+            bar.className = 'progress-fill fuel-fill';
+            if (percent < 20) {
+                bar.classList.add('low');
+            }
+        }
+
+        // RAGE MP events
+        if (typeof mp !== 'undefined') {
+            mp.events.add('showVehicleHUD', (data) => {
+                showVehicleHUD(JSON.parse(data));
+            });
+            
+            mp.events.add('hideVehicleHUD', () => {
+                hideVehicleHUD();
+            });
+            
+            mp.events.add('updateVehicleHealth', (health, maxHealth) => {
+                updateVehicleHealth(health, maxHealth);
+            });
+            
+            mp.events.add('updateVehicleFuel', (fuel, maxFuel) => {
+                updateVehicleFuel(fuel, maxFuel);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,15 +1,16 @@
 // ============================================================================
-// BATTLE ARENA - Enhanced Server with UI Integration
-// Now with visual objects, web UI, and reduced command dependency
+// BATTLE ARENA - Enhanced Server with UI and Vehicle System
+// v2.1 - Now with full vehicle support!
 // ============================================================================
 
 const fs = require('fs');
 const path = require('path');
+const VehicleManager = require('./modules/vehicles');
 
 console.log('');
 console.log('========================================');
 console.log('   BATTLE ARENA SERVER LOADING');
-console.log('   v2.0 - UI Enhanced Edition');
+console.log('   v2.1 - Vehicle System Edition');
 console.log('========================================');
 
 // Load configuration
@@ -38,6 +39,7 @@ try {
 
 const BATTLE_ZONES = [
     {
+        id: 'industrial',
         name: 'Industrial Complex',
         center: { x: 2747.3, y: 1531.2, z: 24.5 },
         radius: 500,
@@ -52,6 +54,7 @@ const BATTLE_ZONES = [
         }
     },
     {
+        id: 'desert',
         name: 'Desert Outpost',
         center: { x: -1041.0, y: -2746.0, z: 21.0 },
         radius: 600,
@@ -123,7 +126,6 @@ class GameState {
             joinTime: Date.now()
         });
         
-        // Broadcast team stats update
         this.broadcastTeamStats();
     }
 
@@ -164,6 +166,7 @@ class GameState {
 }
 
 const gameState = new GameState();
+const vehicleManager = new VehicleManager(gameState);
 
 // ============================================================================
 // OBJECTIVE SYSTEM WITH VISUALS
@@ -181,10 +184,9 @@ class Objective {
         this.marker = null;
         this.colshape = null;
         
-        // Create colshape for objective detection
         this.colshape = mp.colshapes.newSphere(x, y, z, this.radius);
         
-        console.log(`[OBJECTIVE] Created: ${name} at (${Math.floor(x)}, ${Math.floor(y)}, ${Math.floor(z)})`);
+        console.log(`[OBJECTIVE] Created: ${name}`);
     }
 
     updateCapture(teamId) {
@@ -215,14 +217,12 @@ class Objective {
 mp.events.add('playerJoin', (player) => {
     console.log(`[JOIN] ${player.name} (${player.ip})`);
     
-    // Spawn at spectator location
     player.position = new mp.Vector3(currentBattleZone.center.x, currentBattleZone.center.y, currentBattleZone.center.z + 50);
     player.heading = 0;
     player.dimension = 0;
     player.health = 100;
     player.armour = 0;
     
-    // Initialize player UI
     setTimeout(() => {
         player.call('playerReady');
         player.call('showTeamSelect');
@@ -243,7 +243,6 @@ mp.events.add('playerDeath', (player, reason, killer) => {
         
         player.call('showNotification', ['You will respawn soon', 'info']);
         
-        // Respawn after delay
         setTimeout(() => {
             if (mp.players.exists(player)) {
                 const spawnPos = currentBattleZone.spawns[`team${playerData.team}`];
@@ -269,6 +268,33 @@ mp.events.add('playerDeath', (player, reason, killer) => {
 });
 
 // ============================================================================
+// VEHICLE EVENTS
+// ============================================================================
+
+mp.events.add('playerEnterVehicle', (player, vehicle, seat) => {
+    vehicleManager.onPlayerEnterVehicle(player, vehicle, seat);
+});
+
+mp.events.add('playerExitVehicle', (player, vehicle) => {
+    vehicleManager.onPlayerExitVehicle(player, vehicle);
+});
+
+mp.events.add('vehicleDamage', (vehicle, bodyHealthLoss, engineHealthLoss) => {
+    const damage = bodyHealthLoss + engineHealthLoss;
+    vehicleManager.damageVehicle(vehicle, damage * 10, null);
+});
+
+mp.events.addCommand('repair', (player) => {
+    const vehicle = player.vehicle;
+    if (!vehicle) {
+        player.call('showNotification', ['You must be near a vehicle!', 'error']);
+        return;
+    }
+    
+    vehicleManager.repairVehicle(player, vehicle);
+});
+
+// ============================================================================
 // UI EVENTS FROM CLIENT
 // ============================================================================
 
@@ -290,7 +316,6 @@ mp.events.add('selectRole', (player, roleName) => {
     player.call('hideAllMenus');
     player.call('showNotification', [`Role: ${roleName.replace('_', ' ').toUpperCase()}`, 'success']);
     
-    // Spawn player
     const spawnPos = currentBattleZone.spawns[`team${playerData.team}`];
     player.position = new mp.Vector3(
         spawnPos.x + (Math.random() * 20 - 10),
@@ -298,7 +323,6 @@ mp.events.add('selectRole', (player, roleName) => {
         spawnPos.z
     );
     
-    // Give loadout based on role
     giveRoleLoadout(player, roleName);
     
     console.log(`[ROLE] ${player.name} selected ${roleName}`);
@@ -313,7 +337,6 @@ mp.events.add('cef:setRallyPoint', (player) => {
     }
     
     const pos = player.position;
-    // Broadcast rally point to squad
     mp.players.forEach(p => {
         const pData = gameState.players.get(p.id);
         if (pData && pData.team === playerData.team) {
@@ -328,7 +351,6 @@ mp.events.add('cef:setRallyPoint', (player) => {
 // ============================================================================
 
 function giveRoleLoadout(player, role) {
-    // Clear existing weapons
     player.removeAllWeapons();
     
     switch(role) {
@@ -415,7 +437,7 @@ function broadcastObjectivesUpdate() {
 }
 
 // ============================================================================
-// ADMIN COMMANDS (Simplified)
+// ADMIN COMMANDS
 // ============================================================================
 
 mp.events.addCommand('start', (player) => {
@@ -437,10 +459,12 @@ function startMatch() {
     gameState.matchStartTime = Date.now();
     gameState.teamScores = { 1: 0, 2: 0 };
 
-    // Create objectives from current battle zone
     gameState.objectives = currentBattleZone.objectives.map((obj, index) => 
         new Objective(`OBJ_${index}`, obj.name, obj.x, obj.y, obj.z)
     );
+
+    // Spawn vehicles
+    vehicleManager.spawnVehiclesForZone(currentBattleZone.id);
 
     mp.players.forEach(player => {
         player.call('showNotification', ['MATCH STARTED!', 'success']);
@@ -448,7 +472,7 @@ function startMatch() {
     });
 
     broadcastObjectivesUpdate();
-    console.log('[MATCH] Match started');
+    console.log('[MATCH] Match started with vehicles');
 }
 
 function endMatch() {
@@ -475,12 +499,10 @@ function endMatch() {
 setInterval(() => {
     if (!gameState.matchActive) return;
 
-    // Reset player counts
     gameState.objectives.forEach(obj => {
         obj.playersInRadius = { 1: 0, 2: 0 };
     });
 
-    // Count players in objectives
     mp.players.forEach(player => {
         const playerData = gameState.players.get(player.id);
         if (!playerData || !playerData.team) return;
@@ -496,7 +518,6 @@ setInterval(() => {
         });
     });
 
-    // Update captures
     gameState.objectives.forEach(obj => {
         [1, 2].forEach(teamId => {
             if (obj.updateCapture(teamId)) {
@@ -514,9 +535,11 @@ setInterval(() => {
     });
 
     broadcastObjectivesUpdate();
+    
+    // Update vehicles
+    vehicleManager.update();
 }, 1000);
 
-// Update HUD regularly
 setInterval(() => {
     broadcastHUDUpdate();
 }, 5000);
@@ -527,11 +550,12 @@ setInterval(() => {
 
 console.log('[UI] Web interface enabled');
 console.log('[VISUAL] Combat objects system loaded');
+console.log('[VEHICLES] 5 vehicle types ready');
 console.log('[COMMANDS] Reduced to essentials only');
 console.log('[BATTLE ZONE] Industrial Complex loaded');
 console.log('========================================');
 console.log('   BATTLE ARENA SERVER READY');
-console.log('   Players join via UI - No commands needed!');
+console.log('   🚗 Vehicles, UI, Combat - All systems GO!');
 console.log('========================================');
 console.log('');
 
