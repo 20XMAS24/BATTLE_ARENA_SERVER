@@ -1,0 +1,8 @@
+{
+  "name": "tactical-warfare",
+  "version": "1.0.0",
+  "description": "Battle Arena - Tactical Squad Warfare Game Mode",
+  "main": "index.js",
+  "author": "20XMAS24",
+  "license": "MIT"
+}
