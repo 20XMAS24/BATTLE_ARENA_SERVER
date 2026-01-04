@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimap</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: transparent;
+        }
+
+        .minimap-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 250px;
+            height: 250px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+            z-index: 90;
+            overflow: hidden;
+        }
+
+        .minimap-header {
+            background: rgba(255, 215, 0, 0.2);
+            padding: 6px 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .minimap-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: #FFD700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .minimap-compass {
+            font-size: 10px;
+            color: #aaa;
+            font-weight: bold;
+        }
+
+        .minimap-canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: calc(100% - 30px);
+            background: rgba(20, 20, 20, 0.9);
+        }
+
+        #minimap-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Grid overlay */
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                repeating-linear-gradient(0deg, 
+                    transparent, 
+                    transparent 24px, 
+                    rgba(255, 215, 0, 0.1) 24px, 
+                    rgba(255, 215, 0, 0.1) 25px),
+                repeating-linear-gradient(90deg, 
+                    transparent, 
+                    transparent 24px, 
+                    rgba(255, 215, 0, 0.1) 24px, 
+                    rgba(255, 215, 0, 0.1) 25px);
+            pointer-events: none;
+        }
+
+        /* Legend */
+        .minimap-legend {
+            position: absolute;
+            bottom: 5px;
+            left: 5px;
+            display: flex;
+            gap: 8px;
+            font-size: 9px;
+            color: #aaa;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.team1 { background: #4169E1; }
+        .legend-dot.team2 { background: #DC143C; }
+        .legend-dot.objective { background: #FFD700; }
+
+        /* Zoom controls */
+        .zoom-controls {
+            position: absolute;
+            top: 35px;
+            right: 5px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .zoom-btn {
+            width: 24px;
+            height: 24px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 4px;
+            color: #FFD700;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .zoom-btn:hover {
+            background: rgba(255, 215, 0, 0.2);
+            border-color: #FFD700;
+        }
+
+        /* Player indicator (center) */
+        .player-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 12px;
+            height: 12px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .player-arrow {
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 12px solid #00FF00;
+            filter: drop-shadow(0 0 3px rgba(0, 255, 0, 0.8));
+        }
+    </style>
+</head>
+<body>
+    <div class="minimap-container">
+        <div class="minimap-header">
+            <span class="minimap-title">🗺️ Tactical Map</span>
+            <span class="minimap-compass" id="compass">N 0°</span>
+        </div>
+        
+        <div class="minimap-canvas-wrapper">
+            <div class="grid-overlay"></div>
+            <canvas id="minimap-canvas" width="246" height="217"></canvas>
+            
+            <!-- Player indicator (always center) -->
+            <div class="player-indicator">
+                <div class="player-arrow" id="player-arrow"></div>
+            </div>
+
+            <!-- Zoom controls -->
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="zoomIn()">+</button>
+                <button class="zoom-btn" onclick="zoomOut()">−</button>
+            </div>
+
+            <!-- Legend -->
+            <div class="minimap-legend">
+                <div class="legend-item">
+                    <div class="legend-dot team1"></div>
+                    <span>Ally</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot team2"></div>
+                    <span>Enemy</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot objective"></div>
+                    <span>Objective</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('[MINIMAP] Loaded');
+
+        const canvas = document.getElementById('minimap-canvas');
+        const ctx = canvas.getContext('2d');
+        const compass = document.getElementById('compass');
+        const playerArrow = document.getElementById('player-arrow');
+
+        let zoom = 1.0;
+        let playerPos = { x: 0, y: 0, z: 0 };
+        let playerHeading = 0;
+        let objectives = [];
+        let nearbyPlayers = [];
+        let mapBounds = { minX: -3000, maxX: 3000, minY: -3000, maxY: 3000 };
+
+        function zoomIn() {
+            zoom = Math.min(zoom + 0.2, 3.0);
+            console.log('[MINIMAP] Zoom in:', zoom);
+        }
+
+        function zoomOut() {
+            zoom = Math.max(zoom - 0.2, 0.5);
+            console.log('[MINIMAP] Zoom out:', zoom);
+        }
+
+        // World to minimap coordinates
+        function worldToMinimap(worldX, worldY) {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            const relX = (worldX - playerPos.x) * zoom * 0.05;
+            const relY = (worldY - playerPos.y) * zoom * 0.05;
+            
+            return {
+                x: centerX + relX,
+                y: centerY - relY // Invert Y
+            };
+        }
+
+        // Update player position and heading
+        function updatePlayer(data) {
+            playerPos = data.position;
+            playerHeading = data.heading;
+            
+            // Update compass
+            const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+            const index = Math.round(playerHeading / 45) % 8;
+            compass.textContent = `${directions[index]} ${Math.round(playerHeading)}°`;
+            
+            // Rotate player arrow
+            playerArrow.style.transform = `rotate(${playerHeading}deg)`;
+        }
+
+        // Update objectives
+        function updateObjectives(data) {
+            objectives = data;
+        }
+
+        // Update nearby players
+        function updateNearbyPlayers(data) {
+            nearbyPlayers = data;
+        }
+
+        // Draw minimap
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw objectives
+            objectives.forEach(obj => {
+                const pos = worldToMinimap(obj.x, obj.y);
+                
+                // Skip if outside canvas
+                if (pos.x < 0 || pos.x > canvas.width || pos.y < 0 || pos.y > canvas.height) {
+                    return;
+                }
+                
+                // Objective circle
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
+                
+                // Color by capture status
+                if (obj.capturedBy === 1) {
+                    ctx.fillStyle = 'rgba(65, 105, 225, 0.6)';
+                } else if (obj.capturedBy === 2) {
+                    ctx.fillStyle = 'rgba(220, 20, 60, 0.6)';
+                } else {
+                    ctx.fillStyle = 'rgba(255, 215, 0, 0.6)';
+                }
+                ctx.fill();
+                
+                ctx.strokeStyle = '#FFD700';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Objective letter
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(obj.name.charAt(0), pos.x, pos.y);
+            });
+            
+            // Draw nearby players
+            nearbyPlayers.forEach(p => {
+                const pos = worldToMinimap(p.x, p.y);
+                
+                // Skip if outside canvas
+                if (pos.x < 0 || pos.x > canvas.width || pos.y < 0 || pos.y > canvas.height) {
+                    return;
+                }
+                
+                // Player dot
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+                
+                if (p.team === 1) {
+                    ctx.fillStyle = '#4169E1';
+                } else if (p.team === 2) {
+                    ctx.fillStyle = '#DC143C';
+                } else {
+                    ctx.fillStyle = '#888';
+                }
+                ctx.fill();
+                
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                // Player direction indicator
+                if (p.heading !== undefined) {
+                    const angle = p.heading * Math.PI / 180;
+                    const lineLength = 8;
+                    const endX = pos.x + Math.sin(angle) * lineLength;
+                    const endY = pos.y - Math.cos(angle) * lineLength;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(pos.x, pos.y);
+                    ctx.lineTo(endX, endY);
+                    ctx.strokeStyle = p.team === 1 ? '#4169E1' : '#DC143C';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            });
+            
+            requestAnimationFrame(draw);
+        }
+
+        // Start drawing
+        draw();
+
+        // Test data
+        function testMinimap() {
+            updatePlayer({
+                position: { x: 0, y: 0, z: 0 },
+                heading: 0
+            });
+
+            updateObjectives([
+                { name: 'Alpha', x: 100, y: 100, capturedBy: 1 },
+                { name: 'Bravo', x: -100, y: 150, capturedBy: 0 },
+                { name: 'Charlie', x: 50, y: -120, capturedBy: 2 }
+            ]);
+
+            updateNearbyPlayers([
+                { x: 50, y: 30, team: 1, heading: 45 },
+                { x: -70, y: 80, team: 1, heading: 180 },
+                { x: 120, y: -50, team: 2, heading: 270 },
+                { x: -90, y: -60, team: 2, heading: 90 }
+            ]);
+
+            // Simulate heading rotation
+            let angle = 0;
+            setInterval(() => {
+                angle = (angle + 1) % 360;
+                updatePlayer({
+                    position: { x: 0, y: 0, z: 0 },
+                    heading: angle
+                });
+            }, 50);
+        }
+
+        // Expose to parent
+        if (typeof mp !== 'undefined') {
+            // RAGE:MP will call these
+        } else {
+            console.log('[MINIMAP] Browser test mode - use testMinimap()');
+            window.testMinimap = testMinimap;
+        }
+    </script>
+</body>
+</html>
