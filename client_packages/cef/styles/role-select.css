@@ -56,6 +56,37 @@ body {
     border: 2px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Featured role (Squad Leader) */
+.role-card.featured {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 255, 255, 0.05));
+    border: 2px solid rgba(255, 215, 0, 0.5);
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 40px rgba(255, 215, 0, 0.5);
+    }
+}
+
+.role-card.featured::after {
+    content: '⭐ RECOMMENDED';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255, 215, 0, 0.2);
+    color: #ffd700;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
 .role-card::before {
     content: '';
     position: absolute;
@@ -101,6 +132,10 @@ body {
     color: #00ff88;
 }
 
+.role-card.featured h3 {
+    color: #ffd700;
+}
+
 .role-desc {
     color: #aaaaaa;
     font-size: 14px;
@@ -129,6 +164,10 @@ body {
     margin-right: 5px;
 }
 
+.role-card.featured .abilities li::before {
+    color: #ffd700;
+}
+
 .slots {
     margin-top: 15px;
     padding: 10px;
@@ -139,6 +178,12 @@ body {
 .slots .available {
     font-weight: bold;
     color: #00ff88;
+    font-size: 16px;
+    text-transform: uppercase;
+}
+
+.role-card.featured .slots .available {
+    color: #ffd700;
 }
 
 .slots .full {
@@ -147,7 +192,16 @@ body {
 
 .footer {
     margin-top: 30px;
-    color: #666666;
+}
+
+.footer p {
+    margin: 10px 0;
+}
+
+.footer .hint {
+    color: #ffd700;
+    font-size: 18px;
+    margin-bottom: 15px;
 }
 
 .footer kbd {
@@ -161,7 +215,7 @@ body {
 /* Role-specific styling */
 .role-card.squad-leader:hover {
     border-color: #ffd700;
-    box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
+    box-shadow: 0 10px 40px rgba(255, 215, 0, 0.5);
 }
 
 .role-card.rifleman:hover {
