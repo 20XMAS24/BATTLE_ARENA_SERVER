@@ -1,14 +1,14 @@
 // ============================================================================
 // BATTLE ARENA - Client-Side Main Script
-// Handles UI, visuals, and client-side game logic
+// v2.4 - Main Menu Edition
 // ============================================================================
 
 const player = mp.players.local;
 let hudBrowser = null;
+let mainMenuBrowser = null;
 let teamSelectBrowser = null;
 let roleSelectBrowser = null;
 let captureBarBrowser = null;
-let scoreBrowser = null;
 let gameState = {
     team: null,
     role: null,
@@ -18,37 +18,108 @@ let gameState = {
     deaths: 0
 };
 
+console.log('[CLIENT] Battle Arena client loading...');
+
 // ============================================================================
 // UI INITIALIZATION
 // ============================================================================
 
 mp.events.add('playerReady', () => {
-    console.log('[CLIENT] Initializing Battle Arena UI...');
+    console.log('[CLIENT] Player ready! Initializing...');
     
-    // Create HUD browser
+    // Create HUD browser (hidden initially)
     hudBrowser = mp.browsers.new('package://cef/hud.html');
     
-    // Create capture bar browser (always loaded but hidden)
+    // Create capture bar browser (hidden initially)
     captureBarBrowser = mp.browsers.new('package://cef/capture-bar.html');
     
-    // Show team selection on spawn
-    setTimeout(() => {
-        showTeamSelection();
-    }, 2000);
+    console.log('[CLIENT] HUD and capture bar loaded');
 });
 
 // ============================================================================
-// TEAM SELECTION UI
+// MAIN MENU
+// ============================================================================
+
+function showMainMenu() {
+    console.log('[CLIENT] Opening main menu...');
+    
+    if (mainMenuBrowser) {
+        mainMenuBrowser.destroy();
+    }
+    
+    mainMenuBrowser = mp.browsers.new('package://cef/main-menu.html');
+    mp.gui.cursor.show(true, true);
+    mp.game.ui.displayRadar(false);
+    mp.gui.chat.show(false);
+    
+    console.log('[CLIENT] Main menu opened!');
+}
+
+function hideMainMenu() {
+    console.log('[CLIENT] Hiding main menu...');
+    
+    if (mainMenuBrowser) {
+        mainMenuBrowser.destroy();
+        mainMenuBrowser = null;
+    }
+    
+    mp.gui.cursor.show(false, false);
+    mp.game.ui.displayRadar(true);
+    mp.gui.chat.show(true);
+}
+
+mp.events.add('showMainMenu', () => {
+    showMainMenu();
+});
+
+mp.events.add('hideMainMenu', () => {
+    hideMainMenu();
+});
+
+// Update main menu stats
+mp.events.add('updateMainMenuStats', (statsJson) => {
+    console.log('[CLIENT] Updating main menu stats:', statsJson);
+    
+    if (mainMenuBrowser) {
+        mainMenuBrowser.execute(`updateServerStats('${statsJson}')`);
+    }
+});
+
+// Player selected team and mode from main menu
+mp.events.add('selectTeamAndMode', (teamId, gameMode) => {
+    console.log(`[CLIENT] Selected team ${teamId}, mode ${gameMode}`);
+    
+    gameState.team = teamId;
+    
+    // Tell server
+    mp.events.callRemote('selectTeamAndMode', teamId, gameMode);
+    
+    // Close main menu
+    hideMainMenu();
+});
+
+mp.events.add('closeMainMenu', () => {
+    hideMainMenu();
+});
+
+mp.events.add('requestServerStats', () => {
+    mp.events.callRemote('requestServerStats');
+});
+
+// ============================================================================
+// TEAM SELECTION UI (Old system - kept for compatibility)
 // ============================================================================
 
 function showTeamSelection() {
+    console.log('[CLIENT] Opening team select...');
+    
     if (teamSelectBrowser) return;
     
     teamSelectBrowser = mp.browsers.new('package://cef/team-select.html');
     mp.gui.cursor.show(true, true);
     mp.game.ui.displayRadar(false);
     
-    console.log('[UI] Team selection opened');
+    console.log('[CLIENT] Team selection opened');
 }
 
 function hideTeamSelection() {
@@ -60,49 +131,92 @@ function hideTeamSelection() {
     }
 }
 
+mp.events.add('showTeamSelect', () => {
+    showTeamSelection();
+});
+
 // ============================================================================
 // ROLE SELECTION UI
 // ============================================================================
 
 function showRoleSelection() {
-    if (roleSelectBrowser) return;
+    console.log('[CLIENT] Opening role select...');
+    
+    if (roleSelectBrowser) {
+        roleSelectBrowser.destroy();
+    }
     
     roleSelectBrowser = mp.browsers.new('package://cef/role-select.html');
     mp.gui.cursor.show(true, true);
+    mp.game.ui.displayRadar(false);
     
-    console.log('[UI] Role selection opened');
+    console.log('[CLIENT] Role selection opened');
 }
 
 function hideRoleSelection() {
+    console.log('[CLIENT] Hiding role select...');
+    
     if (roleSelectBrowser) {
         roleSelectBrowser.destroy();
         roleSelectBrowser = null;
-        mp.gui.cursor.show(false, false);
     }
+    
+    mp.gui.cursor.show(false, false);
+    mp.game.ui.displayRadar(true);
+    mp.gui.chat.show(true);
 }
-
-// ============================================================================
-// EVENTS FROM SERVER
-// ============================================================================
-
-mp.events.add('showTeamSelect', () => {
-    showTeamSelection();
-});
 
 mp.events.add('showRoleSelect', () => {
     hideTeamSelection();
+    hideMainMenu();
     showRoleSelection();
 });
 
 mp.events.add('hideAllMenus', () => {
+    hideMainMenu();
     hideTeamSelection();
     hideRoleSelection();
 });
 
+// ============================================================================
+// EVENTS FROM CEF (Browser)
+// ============================================================================
+
+// From team-select.html
+mp.events.add('cef:selectTeam', (teamId) => {
+    console.log('[CEF] Team selected:', teamId);
+    
+    mp.events.callRemote('selectTeam', parseInt(teamId));
+    gameState.team = parseInt(teamId);
+    hideTeamSelection();
+    showRoleSelection();
+});
+
+// From role-select.html
+mp.events.add('cef:selectRole', (roleName) => {
+    console.log('[CEF] Role selected:', roleName);
+    
+    mp.events.callRemote('selectRole', roleName);
+    gameState.role = roleName;
+    hideRoleSelection();
+});
+
+mp.events.add('cef:requestRespawn', () => {
+    mp.events.callRemote('requestRespawn');
+});
+
+// ============================================================================
+// GAME STATE UPDATES
+// ============================================================================
+
 mp.events.add('updateGameState', (data) => {
-    gameState = JSON.parse(data);
-    if (hudBrowser) {
-        hudBrowser.execute(`updateHUD(${data});`);
+    try {
+        gameState = JSON.parse(data);
+        if (hudBrowser) {
+            hudBrowser.execute(`updateHUD(${data});`);
+        }
+    } catch (e) {
+        console.error('[CLIENT] Error updating game state:', e);
     }
 });
 
@@ -110,12 +224,17 @@ mp.events.add('showNotification', (message, type) => {
     if (hudBrowser) {
         hudBrowser.execute(`showNotification('${message}', '${type}');`);
     }
+    console.log(`[NOTIFICATION] ${message}`);
 });
 
 mp.events.add('updateObjectives', (objectivesData) => {
-    gameState.objectives = JSON.parse(objectivesData);
-    if (hudBrowser) {
-        hudBrowser.execute(`updateObjectives(${objectivesData});`);
+    try {
+        gameState.objectives = JSON.parse(objectivesData);
+        if (hudBrowser) {
+            hudBrowser.execute(`updateObjectives(${objectivesData});`);
+        }
+    } catch (e) {
+        console.error('[CLIENT] Error updating objectives:', e);
     }
 });
 
@@ -127,31 +246,6 @@ mp.events.add('updateCaptureProgress', (data) => {
     if (captureBarBrowser) {
         captureBarBrowser.execute(`updateCaptureProgress(${data});`);
     }
-});
-
-// ============================================================================
-// EVENTS FROM CEF (Browser)
-// ============================================================================
-
-mp.events.add('cef:selectTeam', (teamId) => {
-    mp.events.callRemote('selectTeam', parseInt(teamId));
-    gameState.team = parseInt(teamId);
-    hideTeamSelection();
-    showRoleSelection();
-});
-
-mp.events.add('cef:selectRole', (roleName) => {
-    mp.events.callRemote('selectRole', roleName);
-    gameState.role = roleName;
-    hideRoleSelection();
-});
-
-mp.events.add('cef:requestRespawn', () => {
-    mp.events.callRemote('requestRespawn');
-});
-
-mp.events.add('cef:openSquadMenu', () => {
-    // TODO: Squad menu
 });
 
 // ============================================================================
@@ -171,11 +265,9 @@ function createObjectiveMarkers(objectives) {
     });
     objectiveBlips = [];
     
-    // Store objectives for rendering
     currentObjectives = objectives;
     
     objectives.forEach((obj, index) => {
-        // Create map blip
         const blip = mp.blips.new(84, new mp.Vector3(obj.x, obj.y, obj.z), {
             name: obj.name,
             color: obj.capturedBy === 1 ? 3 : (obj.capturedBy === 2 ? 1 : 5),
@@ -191,7 +283,7 @@ mp.events.add('createObjectiveMarkers', (data) => {
     createObjectiveMarkers(objectives);
 });
 
-// Draw objective cylinder markers on ground
+// Draw objective markers
 mp.events.add('render', () => {
     const playerPos = mp.players.local.position;
     
@@ -199,7 +291,6 @@ mp.events.add('render', () => {
         const color = obj.capturedBy === 1 ? [0, 100, 255, 100] : 
                      (obj.capturedBy === 2 ? [255, 50, 50, 100] : [255, 200, 0, 100]);
         
-        // Draw cylinder marker
         mp.game.graphics.drawMarker(
             1, // Cylinder
             obj.x, obj.y, obj.z - 1,
@@ -210,14 +301,12 @@ mp.events.add('render', () => {
             false, true, 2, false, null, null, false
         );
         
-        // Check if player is in objective radius
         const objPos = new mp.Vector3(obj.x, obj.y, obj.z);
         const dist = playerPos.subtract(objPos).length();
         
         if (dist < obj.radius) {
-            // Player is capturing - update capture bar
             const now = Date.now();
-            if (now - lastCaptureUpdate > 200) { // Update every 200ms
+            if (now - lastCaptureUpdate > 200) {
                 lastCaptureUpdate = now;
                 
                 const captureData = {
@@ -244,15 +333,13 @@ mp.events.add('render', () => {
 let rallyBlip = null;
 
 mp.events.add('showRallyPoint', (x, y, z) => {
-    // Remove old rally point
     if (rallyBlip && mp.blips.exists(rallyBlip)) {
         rallyBlip.destroy();
     }
     
-    // Create new rally point blip
     rallyBlip = mp.blips.new(398, new mp.Vector3(x, y, z), {
         name: 'Rally Point',
-        color: 2, // green
+        color: 2,
         scale: 0.8,
         shortRange: true
     });
@@ -265,7 +352,6 @@ mp.events.add('showRallyPoint', (x, y, z) => {
 let fobBlips = [];
 
 mp.events.add('createFOB', (x, y, z, teamId) => {
-    // Create blip
     const blip = mp.blips.new(473, new mp.Vector3(x, y, z), {
         name: 'FOB',
         color: teamId === 1 ? 3 : 1,
@@ -280,23 +366,35 @@ mp.events.add('createFOB', (x, y, z, teamId) => {
 // KEYBINDS
 // ============================================================================
 
-mp.keys.bind(0x4D, true, () => { // M key - Map/Objectives
+mp.keys.bind(0x4D, true, () => { // M key
     if (hudBrowser) {
         hudBrowser.execute('toggleObjectivesPanel();');
     }
 });
 
-mp.keys.bind(0x54, true, () => { // T key - Squad menu
+mp.keys.bind(0x54, true, () => { // T key
     if (hudBrowser) {
         hudBrowser.execute('toggleSquadPanel();');
     }
 });
 
-mp.keys.bind(0x42, true, () => { // B key - Spawn menu
+mp.keys.bind(0x42, true, () => { // B key
     if (hudBrowser) {
         hudBrowser.execute('toggleSpawnMenu();');
     }
 });
 
-console.log('[CLIENT] Battle Arena client-side loaded!');
-console.log('[CLIENT] Capture bar UI initialized');
+// ESC to close menus
+mp.keys.bind(0x1B, true, () => { // ESC
+    if (mainMenuBrowser) {
+        hideMainMenu();
+    } else if (roleSelectBrowser) {
+        hideRoleSelection();
+    } else if (teamSelectBrowser) {
+        hideTeamSelection();
+    }
+});
+
+console.log('[CLIENT] Battle Arena client loaded!');
+console.log('[CLIENT] Main menu system ready');
+console.log('[CLIENT] Press ESC to close menus');
