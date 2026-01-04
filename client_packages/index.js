@@ -143,44 +143,29 @@ mp.events.add('cef:openSquadMenu', () => {
 // VISUAL MARKERS FOR OBJECTIVES
 // ============================================================================
 
-let objectiveMarkers = [];
 let objectiveBlips = [];
+let currentObjectives = [];
 
 function createObjectiveMarkers(objectives) {
-    // Clear old markers
-    objectiveMarkers.forEach(marker => {
-        if (marker) mp.markers.remove(marker);
-    });
+    // Clear old blips
     objectiveBlips.forEach(blip => {
-        if (blip) mp.game.ui.removeBlip(blip);
+        if (blip && mp.blips.exists(blip)) {
+            blip.destroy();
+        }
     });
-    
-    objectiveMarkers = [];
     objectiveBlips = [];
     
+    // Store objectives for rendering
+    currentObjectives = objectives;
+    
     objectives.forEach((obj, index) => {
-        // Create 3D marker
-        const marker = mp.markers.new(
-            1, // Type: cylinder
-            new mp.Vector3(obj.x, obj.y, obj.z - 1),
-            obj.radius,
-            {
-                direction: new mp.Vector3(0, 0, 0),
-                rotation: new mp.Vector3(0, 0, 0),
-                color: obj.team === 1 ? [0, 100, 255, 100] : 
-                       obj.team === 2 ? [255, 0, 0, 100] : [255, 255, 0, 100],
-                visible: true,
-                dimension: 0
-            }
-        );
-        objectiveMarkers.push(marker);
-        
         // Create map blip
-        const blip = mp.game.ui.addBlipForCoord(obj.x, obj.y, obj.z);
-        mp.game.ui.setBlipSprite(blip, 84); // objective icon
-        mp.game.ui.setBlipColour(blip, obj.team === 1 ? 38 : obj.team === 2 ? 1 : 5);
-        mp.game.ui.setBlipScale(blip, 1.2);
-        mp.game.invoke('0x9CB1A1623062F402', blip, obj.name); // SET_BLIP_NAME
+        const blip = mp.blips.new(84, new mp.Vector3(obj.x, obj.y, obj.z), {
+            name: obj.name,
+            color: obj.capturedBy === 1 ? 3 : (obj.capturedBy === 2 ? 1 : 5),
+            scale: 1.2,
+            shortRange: false
+        });
         objectiveBlips.push(blip);
     });
 }
@@ -190,61 +175,62 @@ mp.events.add('createObjectiveMarkers', (data) => {
     createObjectiveMarkers(objectives);
 });
 
+// Draw objective cylinder markers on ground
+mp.events.add('render', () => {
+    currentObjectives.forEach(obj => {
+        const color = obj.capturedBy === 1 ? [0, 100, 255, 100] : 
+                     (obj.capturedBy === 2 ? [255, 50, 50, 100] : [255, 200, 0, 100]);
+        
+        // Draw cylinder marker
+        mp.game.graphics.drawMarker(
+            1, // Cylinder
+            obj.x, obj.y, obj.z - 1,
+            0, 0, 0,
+            0, 0, 0,
+            obj.radius * 2, obj.radius * 2, 2.0,
+            color[0], color[1], color[2], color[3],
+            false, true, 2, false, null, null, false
+        );
+    });
+});
+
 // ============================================================================
 // RALLY POINT MARKERS
 // ============================================================================
 
-let rallyMarker = null;
 let rallyBlip = null;
 
 mp.events.add('showRallyPoint', (x, y, z) => {
     // Remove old rally point
-    if (rallyMarker) mp.markers.remove(rallyMarker);
-    if (rallyBlip) mp.game.ui.removeBlip(rallyBlip);
+    if (rallyBlip && mp.blips.exists(rallyBlip)) {
+        rallyBlip.destroy();
+    }
     
-    // Create new rally point marker
-    rallyMarker = mp.markers.new(
-        20, // Type: flag
-        new mp.Vector3(x, y, z),
-        2,
-        {
-            color: [0, 255, 0, 200],
-            visible: true
-        }
-    );
-    
-    // Create blip
-    rallyBlip = mp.game.ui.addBlipForCoord(x, y, z);
-    mp.game.ui.setBlipSprite(rallyBlip, 398); // rally icon
-    mp.game.ui.setBlipColour(rallyBlip, 2); // green
-    mp.game.invoke('0x9CB1A1623062F402', rallyBlip, 'Rally Point');
+    // Create new rally point blip
+    rallyBlip = mp.blips.new(398, new mp.Vector3(x, y, z), {
+        name: 'Rally Point',
+        color: 2, // green
+        scale: 0.8,
+        shortRange: true
+    });
 });
 
 // ============================================================================
 // FOB VISUALIZATION
 // ============================================================================
 
-let fobObjects = [];
+let fobBlips = [];
 
 mp.events.add('createFOB', (x, y, z, teamId) => {
-    // Create FOB visual objects
-    const fobBase = mp.objects.new(
-        mp.game.joaat('prop_container_01a'),
-        new mp.Vector3(x, y, z),
-        {
-            rotation: new mp.Vector3(0, 0, 0),
-            alpha: 255,
-            dimension: 0
-        }
-    );
-    
-    fobObjects.push(fobBase);
-    
     // Create blip
-    const blip = mp.game.ui.addBlipForCoord(x, y, z);
-    mp.game.ui.setBlipSprite(blip, 473); // FOB icon
-    mp.game.ui.setBlipColour(blip, teamId === 1 ? 38 : 1);
-    mp.game.invoke('0x9CB1A1623062F402', blip, 'FOB');
+    const blip = mp.blips.new(473, new mp.Vector3(x, y, z), {
+        name: 'FOB',
+        color: teamId === 1 ? 3 : 1,
+        scale: 1.0,
+        shortRange: false
+    });
+    
+    fobBlips.push(blip);
 });
 
 // ============================================================================
@@ -267,24 +253,6 @@ mp.keys.bind(0x42, true, () => { // B key - Spawn menu
     if (hudBrowser) {
         hudBrowser.execute('toggleSpawnMenu();');
     }
-});
-
-// ============================================================================
-// NAMETAGS
-// ============================================================================
-
-mp.events.add('render', () => {
-    mp.players.forEachInStreamRange((player) => {
-        if (player === mp.players.local || !player.vehicle) {
-            const pos = player.position;
-            const screenPos = mp.game.graphics.world3dToScreen2d(pos.x, pos.y, pos.z + 1);
-            
-            if (screenPos) {
-                // Draw nametag with team color
-                // Will be handled in CEF for better performance
-            }
-        }
-    });
 });
 
 console.log('[CLIENT] Battle Arena client-side loaded!');
