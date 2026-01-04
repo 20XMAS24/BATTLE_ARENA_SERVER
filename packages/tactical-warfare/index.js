@@ -88,6 +88,7 @@ class GameState {
         this.matchStartTime = 0;
         this.teamScores = { 1: 0, 2: 0 };
         this.roleSlots = {};
+        this.admins = new Set(); // Admin list
         
         // Initialize teams
         for (let i = 1; i <= 2; i++) {
@@ -163,6 +164,15 @@ class GameState {
         const total = team.wins + team.losses;
         return total > 0 ? Math.round((team.wins / total) * 100) : 50;
     }
+
+    isAdmin(player) {
+        return this.admins.has(player.name) || this.admins.has(player.socialClub);
+    }
+
+    addAdmin(identifier) {
+        this.admins.add(identifier);
+        console.log(`[ADMIN] Added admin: ${identifier}`);
+    }
 }
 
 const gameState = new GameState();
@@ -222,6 +232,14 @@ mp.events.add('playerJoin', (player) => {
     player.dimension = 0;
     player.health = 100;
     player.armour = 0;
+    
+    // Auto-grant admin to first player for testing
+    if (mp.players.length === 1) {
+        gameState.addAdmin(player.name);
+        gameState.addAdmin(player.socialClub);
+        player.outputChatBox('!{00FF00}You have been granted admin rights!');
+        player.outputChatBox('!{FFFF00}Use /start to begin the match');
+    }
     
     setTimeout(() => {
         player.call('playerReady');
@@ -440,18 +458,70 @@ function broadcastObjectivesUpdate() {
 // ADMIN COMMANDS
 // ============================================================================
 
+// Make admin
+mp.events.addCommand('makeadmin', (player, fullText, targetName) => {
+    if (!gameState.isAdmin(player)) {
+        player.outputChatBox('!{FF0000}You are not an admin!');
+        return;
+    }
+
+    if (!targetName) {
+        player.outputChatBox('!{FFAA00}Usage: /makeadmin <player name>');
+        return;
+    }
+
+    const target = mp.players.toArray().find(p => 
+        p.name.toLowerCase().includes(targetName.toLowerCase())
+    );
+
+    if (!target) {
+        player.outputChatBox('!{FF0000}Player not found!');
+        return;
+    }
+
+    gameState.addAdmin(target.name);
+    gameState.addAdmin(target.socialClub);
+    
+    player.outputChatBox(`!{00FF00}${target.name} is now an admin!`);
+    target.outputChatBox('!{00FF00}You have been granted admin rights!');
+});
+
+// Start match - NO ADMIN REQUIRED FOR TESTING
 mp.events.addCommand('start', (player) => {
-    if (!player.admin) {
+    player.outputChatBox('!{00FF00}Starting match...');
+    startMatch();
+});
+
+// End match  
+mp.events.addCommand('end', (player) => {
+    if (!gameState.isAdmin(player)) {
+        player.outputChatBox('!{FF0000}Admin only');
+        return;
+    }
+    endMatch();
+});
+
+// Teleport to coordinates
+mp.events.addCommand('tp', (player, fullText, x, y, z) => {
+    if (!gameState.isAdmin(player)) {
         player.outputChatBox('!{FF0000}Admin only');
         return;
     }
 
-    startMatch();
+    if (!x || !y || !z) {
+        player.outputChatBox('!{FFAA00}Usage: /tp <x> <y> <z>');
+        return;
+    }
+
+    player.position = new mp.Vector3(parseFloat(x), parseFloat(y), parseFloat(z));
+    player.outputChatBox(`!{00FF00}Teleported to: ${x}, ${y}, ${z}`);
 });
 
-mp.events.addCommand('end', (player) => {
-    if (!player.admin) return;
-    endMatch();
+// Get position
+mp.events.addCommand('pos', (player) => {
+    const pos = player.position;
+    player.outputChatBox(`!{00FFFF}Position: ${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)}`);
+    console.log(`[POS] ${player.name}: x: ${pos.x}, y: ${pos.y}, z: ${pos.z}`);
 });
 
 function startMatch() {
@@ -469,6 +539,10 @@ function startMatch() {
     mp.players.forEach(player => {
         player.call('showNotification', ['MATCH STARTED!', 'success']);
         player.call('startMatchTimer', [gameState.matchStartTime]);
+        player.outputChatBox('!{00FF00}═══════════════════════════════');
+        player.outputChatBox('!{00FF00}     MATCH STARTED!');
+        player.outputChatBox('!{FFFF00}     Vehicles spawned at bases');
+        player.outputChatBox('!{00FF00}═══════════════════════════════');
     });
 
     broadcastObjectivesUpdate();
@@ -551,7 +625,7 @@ setInterval(() => {
 console.log('[UI] Web interface enabled');
 console.log('[VISUAL] Combat objects system loaded');
 console.log('[VEHICLES] 5 vehicle types ready');
-console.log('[COMMANDS] Reduced to essentials only');
+console.log('[COMMANDS] /start - Begin match (auto-grants admin to first player)');
 console.log('[BATTLE ZONE] Industrial Complex loaded');
 console.log('========================================');
 console.log('   BATTLE ARENA SERVER READY');
