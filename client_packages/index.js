@@ -1,6 +1,6 @@
 // ============================================================================
 // BATTLE ARENA - Client-Side Main Script
-// v2.6 - Disabled GTA UI Elements
+// v2.7 - Fixed Render + First Person Lock
 // ============================================================================
 
 const player = mp.players.local;
@@ -24,13 +24,13 @@ let gameState = {
 console.log('[CLIENT] Battle Arena client loading...');
 
 // ============================================================================
-// DISABLE GTA DEFAULT UI
+// DISABLE GTA DEFAULT UI & LOCK FIRST PERSON
 // ============================================================================
 
 // Disable GTA radar/minimap
 mp.game.ui.displayRadar(false);
 
-// Disable HUD components
+// HUD components to hide
 const hudComponentsToHide = [
     1,  // WANTED_STARS
     2,  // WEAPON_ICON
@@ -45,8 +45,13 @@ const hudComponentsToHide = [
     20  // WEAPON_WHEEL
 ];
 
-// Hide on every frame to ensure they stay hidden
+let objectiveBlips = [];
+let currentObjectives = [];
+let lastCaptureUpdate = 0;
+
+// Render loop
 mp.events.add('render', () => {
+    // === GTA UI DISABLE ===
     // Disable GTA radar every frame
     mp.game.ui.displayRadar(false);
     
@@ -58,11 +63,56 @@ mp.events.add('render', () => {
     // Disable pause menu (ESC menu)
     mp.game.ui.setPauseMenuActive(false);
     
-    // Disable help text
-    mp.game.ui.hideHudAndRadarThisFrame();
+    // === FIRST PERSON LOCK ===
+    // Force first person view (4 = First Person)
+    const currentCam = mp.game.cam.getFollowPedCamViewMode();
+    if (currentCam !== 4) {
+        mp.game.cam.setFollowPedCamViewMode(4);
+    }
+    
+    // Disable camera switching controls
+    mp.game.controls.disableControlAction(0, 0, true);   // Next Camera (V key)
+    mp.game.controls.disableControlAction(0, 26, true);  // Look Behind
+    
+    // === OBJECTIVE MARKERS ===
+    if (mp.players.local && currentObjectives.length > 0) {
+        const playerPos = mp.players.local.position;
+        
+        currentObjectives.forEach(obj => {
+            const color = obj.capturedBy === 1 ? [0, 100, 255, 100] : 
+                         (obj.capturedBy === 2 ? [255, 50, 50, 100] : [255, 200, 0, 100]);
+            
+            mp.game.graphics.drawMarker(
+                1, obj.x, obj.y, obj.z - 1, 0, 0, 0, 0, 0, 0,
+                obj.radius * 2, obj.radius * 2, 2.0,
+                color[0], color[1], color[2], color[3],
+                false, true, 2, false, null, null, false
+            );
+            
+            const dist = playerPos.subtract(new mp.Vector3(obj.x, obj.y, obj.z)).length();
+            
+            if (dist < obj.radius) {
+                const now = Date.now();
+                if (now - lastCaptureUpdate > 200) {
+                    lastCaptureUpdate = now;
+                    const captureData = {
+                        name: obj.name,
+                        progress: obj.captureProgress || 0,
+                        capturedBy: obj.capturedBy || 0,
+                        team1Players: obj.playersInRadius ? obj.playersInRadius[1] : 0,
+                        team2Players: obj.playersInRadius ? obj.playersInRadius[2] : 0,
+                        isCapturing: true
+                    };
+                    if (captureBarBrowser) {
+                        captureBarBrowser.execute(`updateCaptureProgress(${JSON.stringify(captureData)})`);
+                    }
+                }
+            }
+        });
+    }
 });
 
-console.log('[CLIENT] GTA default UI disabled');
+console.log('[CLIENT] GTA UI disabled + First Person locked');
 
 // ============================================================================
 // UI INITIALIZATION
@@ -70,6 +120,9 @@ console.log('[CLIENT] GTA default UI disabled');
 
 mp.events.add('playerReady', () => {
     console.log('[CLIENT] Player ready! Initializing...');
+    
+    // Force first person immediately
+    mp.game.cam.setFollowPedCamViewMode(4);
     
     // Create HUD browser (hidden initially)
     hudBrowser = mp.browsers.new('package://cef/hud.html');
@@ -81,7 +134,7 @@ mp.events.add('playerReady', () => {
     killfeedBrowser = mp.browsers.new('package://cef/killfeed.html');
     
     // Create minimap browser
-    // minimapBrowser = mp.browsers.new('package://cef/minimap.html');
+    minimapBrowser = mp.browsers.new('package://cef/minimap.html');
     
     // Hide HUD initially
     if (hudBrowser) {
@@ -418,10 +471,6 @@ mp.events.add('updateCaptureProgress', (data) => {
 // VISUAL MARKERS FOR OBJECTIVES
 // ============================================================================
 
-let objectiveBlips = [];
-let currentObjectives = [];
-let lastCaptureUpdate = 0;
-
 function createObjectiveMarkers(objectives) {
     objectiveBlips.forEach(blip => {
         if (blip && mp.blips.exists(blip)) blip.destroy();
@@ -442,42 +491,6 @@ function createObjectiveMarkers(objectives) {
 
 mp.events.add('createObjectiveMarkers', (data) => {
     createObjectiveMarkers(JSON.parse(data));
-});
-
-mp.events.add('render', () => {
-    const playerPos = mp.players.local.position;
-    
-    currentObjectives.forEach(obj => {
-        const color = obj.capturedBy === 1 ? [0, 100, 255, 100] : 
-                     (obj.capturedBy === 2 ? [255, 50, 50, 100] : [255, 200, 0, 100]);
-        
-        mp.game.graphics.drawMarker(
-            1, obj.x, obj.y, obj.z - 1, 0, 0, 0, 0, 0, 0,
-            obj.radius * 2, obj.radius * 2, 2.0,
-            color[0], color[1], color[2], color[3],
-            false, true, 2, false, null, null, false
-        );
-        
-        const dist = playerPos.subtract(new mp.Vector3(obj.x, obj.y, obj.z)).length();
-        
-        if (dist < obj.radius) {
-            const now = Date.now();
-            if (now - lastCaptureUpdate > 200) {
-                lastCaptureUpdate = now;
-                const captureData = {
-                    name: obj.name,
-                    progress: obj.captureProgress || 0,
-                    capturedBy: obj.capturedBy || 0,
-                    team1Players: obj.playersInRadius ? obj.playersInRadius[1] : 0,
-                    team2Players: obj.playersInRadius ? obj.playersInRadius[2] : 0,
-                    isCapturing: true
-                };
-                if (captureBarBrowser) {
-                    captureBarBrowser.execute(`updateCaptureProgress(${JSON.stringify(captureData)})`);
-                }
-            }
-        }
-    });
 });
 
 // ============================================================================
@@ -502,7 +515,8 @@ mp.keys.bind(0x42, true, () => { // B key
     }
 });
 
-mp.keys.bind(0x1B, true, () => { // ESC - Blocked for GTA pause menu
+mp.keys.bind(0x1B, true, () => { // ESC
+    // Only works in menus, blocked in game
     if (mainMenuBrowser) {
         if (modeSelected) {
             hideMainMenu();
@@ -514,14 +528,15 @@ mp.keys.bind(0x1B, true, () => { // ESC - Blocked for GTA pause menu
     } else if (teamSelectBrowser) {
         hideTeamSelection();
     }
-    // ESC does NOT open GTA pause menu anymore
+    // In game: ESC does NOTHING
 });
 
-mp.keys.bind(0x46, true, () => { // F key - Debug cursor
+mp.keys.bind(0x46, true, () => { // F key - Debug
     mp.gui.cursor.show(true, true);
     mp.gui.chat.push('Cursor shown!');
 });
 
-console.log('[CLIENT] Battle Arena v2.6 loaded!');
+console.log('[CLIENT] Battle Arena v2.7 loaded!');
 console.log('[CLIENT] ✅ Killfeed & Minimap active');
-console.log('[CLIENT] 🚫 GTA UI disabled (radar, pause menu)');
+console.log('[CLIENT] 🚫 GTA radar & pause menu disabled');
+console.log('[CLIENT] 👁️ First person view LOCKED');
