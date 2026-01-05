@@ -40,7 +40,7 @@ mp.events.add('playerReady', () => {
     killfeedBrowser = mp.browsers.new('package://cef/killfeed.html');
     
     // Create minimap browser
-    minimapBrowser = mp.browsers.new('package://cef/minimap.html');
+    // minimapBrowser = mp.browsers.new('package://cef/minimap.html');
     
     // Hide HUD initially
     if (hudBrowser) {
