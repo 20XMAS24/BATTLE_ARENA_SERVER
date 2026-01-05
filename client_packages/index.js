@@ -1,6 +1,6 @@
 // ============================================================================
 // BATTLE ARENA - Client-Side Main Script
-// v2.5 - With Killfeed & Minimap
+// v2.6 - Disabled GTA UI Elements
 // ============================================================================
 
 const player = mp.players.local;
@@ -22,6 +22,47 @@ let gameState = {
 };
 
 console.log('[CLIENT] Battle Arena client loading...');
+
+// ============================================================================
+// DISABLE GTA DEFAULT UI
+// ============================================================================
+
+// Disable GTA radar/minimap
+mp.game.ui.displayRadar(false);
+
+// Disable HUD components
+const hudComponentsToHide = [
+    1,  // WANTED_STARS
+    2,  // WEAPON_ICON
+    3,  // CASH
+    4,  // MP_CASH
+    6,  // VEHICLE_NAME
+    7,  // AREA_NAME
+    8,  // VEHICLE_CLASS
+    9,  // STREET_NAME
+    13, // CASH_CHANGE
+    17, // SAVING_GAME
+    20  // WEAPON_WHEEL
+];
+
+// Hide on every frame to ensure they stay hidden
+mp.events.add('render', () => {
+    // Disable GTA radar every frame
+    mp.game.ui.displayRadar(false);
+    
+    // Hide HUD components
+    hudComponentsToHide.forEach(component => {
+        mp.game.ui.hideHudComponentThisFrame(component);
+    });
+    
+    // Disable pause menu (ESC menu)
+    mp.game.ui.setPauseMenuActive(false);
+    
+    // Disable help text
+    mp.game.ui.hideHudAndRadarThisFrame();
+});
+
+console.log('[CLIENT] GTA default UI disabled');
 
 // ============================================================================
 // UI INITIALIZATION
@@ -102,7 +143,7 @@ function hideMainMenu() {
     if (minimapBrowser) minimapBrowser.execute('document.body.style.display = "block";');
     
     mp.gui.cursor.show(false, false);
-    mp.game.ui.displayRadar(true);
+    mp.game.ui.displayRadar(false); // Keep disabled!
     mp.gui.chat.show(true);
 }
 
@@ -275,7 +316,7 @@ function hideTeamSelection() {
         teamSelectBrowser.destroy();
         teamSelectBrowser = null;
         mp.gui.cursor.show(false, false);
-        mp.game.ui.displayRadar(true);
+        mp.game.ui.displayRadar(false); // Keep disabled!
         if (hudBrowser) hudBrowser.execute('document.body.style.display = "block";');
     }
 }
@@ -300,7 +341,7 @@ function hideRoleSelection() {
         roleSelectBrowser = null;
     }
     mp.gui.cursor.show(false, false);
-    mp.game.ui.displayRadar(true);
+    mp.game.ui.displayRadar(false); // Keep disabled!
     mp.gui.chat.show(true);
     if (hudBrowser) hudBrowser.execute('document.body.style.display = "block";');
     if (captureBarBrowser) captureBarBrowser.execute('document.body.style.display = "block";');
@@ -461,7 +502,7 @@ mp.keys.bind(0x42, true, () => { // B key
     }
 });
 
-mp.keys.bind(0x1B, true, () => { // ESC
+mp.keys.bind(0x1B, true, () => { // ESC - Blocked for GTA pause menu
     if (mainMenuBrowser) {
         if (modeSelected) {
             hideMainMenu();
@@ -473,6 +514,7 @@ mp.keys.bind(0x1B, true, () => { // ESC
     } else if (teamSelectBrowser) {
         hideTeamSelection();
     }
+    // ESC does NOT open GTA pause menu anymore
 });
 
 mp.keys.bind(0x46, true, () => { // F key - Debug cursor
@@ -480,5 +522,6 @@ mp.keys.bind(0x46, true, () => { // F key - Debug cursor
     mp.gui.chat.push('Cursor shown!');
 });
 
-console.log('[CLIENT] Battle Arena v2.5 loaded!');
+console.log('[CLIENT] Battle Arena v2.6 loaded!');
 console.log('[CLIENT] ✅ Killfeed & Minimap active');
+console.log('[CLIENT] 🚫 GTA UI disabled (radar, pause menu)');
